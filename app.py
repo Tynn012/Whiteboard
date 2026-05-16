@@ -92,7 +92,7 @@ html, body, [class*='css'] {
 }
 
 .stApp:hover {
-    color: #111827 !important;
+    color: #111827;
 }
 
 .block-container { padding-top: 1.25rem; padding-bottom: 1.6rem; max-width: 1320px; }
