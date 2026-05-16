@@ -88,6 +88,7 @@ html, body, [class*='css'] {
 
 .stApp {
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    color: #FFFFFF;
 }
 
 .stApp:hover {
