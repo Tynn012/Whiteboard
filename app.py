@@ -4,7 +4,7 @@ import json
 
 import streamlit as st
 
-from quiz_engine import DEFAULT_MODEL_NAME, generate_quiz, quiz_to_json
+from quiz_engine import DEFAULT_MODEL_NAME, generate_quiz, quiz_to_json, load_clapnq_sample
 
 
 st.set_page_config(
@@ -187,19 +187,37 @@ col_left, col_right = st.columns([1.12, 0.88], gap="large")
 
 with col_left:
     st.markdown('<div class="panel"><h3>Study material</h3></div>', unsafe_allow_html=True)
-    uploaded = st.file_uploader("Upload a .txt or .md file", type=["txt", "md"], label_visibility="collapsed")
-    pasted_text = st.text_area(
-        "Paste your board exam reviewer notes here",
-        height=360,
-        placeholder="Example: The Philippine Constitution establishes ...",
+    
+    input_mode = st.radio(
+        "Choose input source",
+        options=["Paste notes", "Upload file", "Load from CLAPNQ dataset"],
+        horizontal=True,
         label_visibility="collapsed",
     )
-
-    input_text = pasted_text.strip()
-    if uploaded is not None:
-        uploaded_text = uploaded.read().decode("utf-8", errors="ignore")
-        if uploaded_text.strip():
-            input_text = uploaded_text.strip()
+    
+    uploaded = None
+    pasted_text = ""
+    dataset_loaded = False
+    input_text = ""
+    
+    if input_mode == "Upload file":
+        uploaded = st.file_uploader("Upload a .txt or .md file", type=["txt", "md"], label_visibility="collapsed")
+        if uploaded is not None:
+            uploaded_text = uploaded.read().decode("utf-8", errors="ignore")
+            if uploaded_text.strip():
+                input_text = uploaded_text.strip()
+    elif input_mode == "Paste notes":
+        pasted_text = st.text_area(
+            "Paste your board exam reviewer notes here",
+            height=360,
+            placeholder="Example: The Philippine Constitution establishes ...",
+            label_visibility="collapsed",
+        )
+        input_text = pasted_text.strip()
+    elif input_mode == "Load from CLAPNQ dataset":
+        st.info("💾 Loading sample questions from PrimeQA's CLAPNQ dataset...")
+        dataset_loaded = True
+        input_text = "__CLAPNQ_DATASET__"
 
     action_col_1, action_col_2 = st.columns([0.55, 0.45])
     with action_col_1:
@@ -219,7 +237,24 @@ with col_left:
 
     if generate_clicked:
         if not input_text:
-            st.warning("Paste some notes or upload a text file first.")
+            st.warning("Select an input source first.")
+        elif input_text == "__CLAPNQ_DATASET__":
+            with st.spinner("Loading sample questions from CLAPNQ dataset..."):
+                try:
+                    quiz_items = load_clapnq_sample(split="train", max_items=6)
+                    st.session_state.quiz_items = quiz_items
+                    st.session_state.graded = False
+                    st.session_state.score = 0
+                    st.session_state.total = len(quiz_items)
+                    for key in list(st.session_state.keys()):
+                        if key.startswith("choice_"):
+                            del st.session_state[key]
+                    if not quiz_items:
+                        st.warning("Could not load quiz items from the dataset. Try again or use manual input.")
+                    else:
+                        st.success(f"Loaded {len(quiz_items)} questions from CLAPNQ dataset.")
+                except Exception as exc:
+                    st.error(f"Dataset loading failed: {exc}")
         else:
             with st.spinner("Generating reviewer questions with PrimeQA..."):
                 try:

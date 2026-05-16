@@ -302,3 +302,58 @@ _QUESTION_WORDS = {
 
 def quiz_to_json(items: Sequence[QuizQuestion]) -> list[dict]:
     return [item.to_dict() for item in items]
+
+
+def load_clapnq_sample(split: str = "train", max_items: int = 5) -> list[QuizQuestion]:
+    """Load sample questions from the PrimeQA CLAPNQ dataset for board-exam style review.
+    
+    Args:
+        split: 'train' or 'validation' split
+        max_items: number of items to load
+        
+    Returns:
+        List of QuizQuestion objects ready for grading
+    """
+    try:
+        from datasets import load_dataset
+        
+        dataset = load_dataset("PrimeQA/clapnq", split=split)
+        quiz_items: list[QuizQuestion] = []
+        seen_questions: set[str] = set()
+        
+        for idx in range(min(max_items, len(dataset))):
+            item = dataset[idx]
+            question = normalize_whitespace(str(item.get("question", "")))
+            context = normalize_whitespace(str(item.get("contexts", [""])[0] if isinstance(item.get("contexts"), list) else item.get("contexts", "")))
+            
+            if not question or not context:
+                continue
+                
+            fingerprint = question.lower()
+            if fingerprint in seen_questions:
+                continue
+            seen_questions.add(fingerprint)
+            
+            # Extract a likely answer span from the context for multiple choice
+            answer = normalize_whitespace(str(item.get("long_answer", "")))
+            if not answer:
+                answer = _sample_answers(context, 1)[0] if _sample_answers(context, 1) else "Not provided"
+            
+            choices = build_choices(answer, [answer], context)
+            
+            quiz_items.append(
+                QuizQuestion(
+                    question=question,
+                    answer=answer,
+                    context=context,
+                    choices=tuple(choices),
+                )
+            )
+            
+            if len(quiz_items) >= max_items:
+                break
+        
+        return quiz_items
+        
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load CLAPNQ dataset: {exc}")
