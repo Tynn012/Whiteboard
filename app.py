@@ -108,6 +108,12 @@ html, body, [class*='css'] {
 .question-meta { color:#111; font-size:0.95rem; }
 .small-note { color:#444; font-size:0.92rem; }
 
+/* New: card-style choices */
+.choice-card { margin:8px 0; padding:10px 12px; border-radius:8px; background:#fbfbfb; border:1px solid #e9e9e9; display:flex; align-items:flex-start; gap:10px; }
+.choice-label { min-width:34px; height:34px; border-radius:6px; background:#111; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
+.choice-text { color:#111; flex:1; }
+.choice-selected { border:2px solid #007a3d; }
+
 .correct { color: #007a3d; font-weight:700; }
 .incorrect { color: #b42318; font-weight:700; }
 
@@ -141,8 +147,7 @@ st.markdown(
 <div class="hero">
     <h1>Board Exam Quiz Forge</h1>
     <p>
-        Load board-exam style questions from SQuAD v2 (generate choices) or the CAIS MMLU dataset (pre-built multiple-choice).
-        Use MMLU to get 4-choice MCQs directly, or SQuAD v2 for context-based distractors.
+        Load multiple-choice questions from the CAIS MMLU dataset (pre-built 4-choice MCQs) for review and practice.
     </p>
     <div class="badge-row">
         <span class="badge">SQuAD v2 Dataset</span>
@@ -238,9 +243,10 @@ with col_info:
         """
         <div class="small-note">
         1. <strong>Configure settings:</strong> Adjust number of questions, pick a split, set `MMLU config` (e.g., 'all' or a subject), and optionally filter by category.
-        2. <strong>Load questions:</strong> Click "Load MMLU questions (4-choice)" to fetch pre-built multiple-choice items.
-        3. <strong>Answer:</strong> Select from multiple-choice options.
-        4. <strong>Grade:</strong> Click "Grade my quiz" to see your score and review with explanations.
+        2. <strong>Dataset split:</strong> Use `validation` to sample held-out items suitable for practice/evaluation; `train` contains training items. For most use-cases pick `validation`.
+        3. <strong>Load questions:</strong> Click "Load MMLU questions (4-choice)" to fetch pre-built multiple-choice items.
+        4. <strong>Answer:</strong> Select from multiple-choice options.
+        5. <strong>Grade:</strong> Click "Grade my quiz" to see your score and review with explanations.
         </div>
         """,
         unsafe_allow_html=True,
@@ -260,38 +266,46 @@ if st.session_state.quiz_items:
                 """,
                 unsafe_allow_html=True,
             )
-            # show choices as radio buttons for better visibility
+            # show choices as radio buttons with A/B prefixes for clarity
+            labels = ["A", "B", "C", "D", "E"]
+            display_options = [f"{labels[i]}. {ch}" for i, ch in enumerate(item.choices)]
             st.radio(
                 f"Answer for question {index + 1}",
-                options=["Select an answer"] + list(item.choices),
+                options=["Select an answer"] + display_options,
                 key=f"choice_{index}",
                 label_visibility="collapsed",
             )
             if show_expanded_choices:
                 # Render choices explicitly (A/B/C/D) so they're always visible
-                labels = ["A", "B", "C", "D", "E"]
                 choices_html = ""
                 for i, ch in enumerate(item.choices):
                     prefix = labels[i] if i < len(labels) else str(i + 1)
-                    choices_html += f"<div style='margin:4px 0; padding:6px 8px; border-radius:6px; background:#fafafa; border:1px solid #efefef;'>" \
-                                    f"<strong>{prefix}.</strong>&nbsp; {ch}</div>"
+                    choices_html += (
+                        f"<div class='choice-card'><div class='choice-label'>{prefix}</div>"
+                        f"<div class='choice-text'>{ch}</div></div>"
+                    )
                 st.markdown(choices_html, unsafe_allow_html=True)
 
         submitted = st.form_submit_button("Grade my quiz", use_container_width=True)
 
-    if submitted:
-        correct = 0
-        answered = 0
-        results = []
-        for index, item in enumerate(st.session_state.quiz_items):
-            selected = st.session_state.get(f"choice_{index}", "Select an answer")
-            is_answered = selected != "Select an answer"
-            if is_answered:
-                answered += 1
-            is_correct = selected == item.answer
-            if is_correct:
-                correct += 1
-            results.append((item, selected, is_correct, is_answered))
+        if submitted:
+            correct = 0
+            answered = 0
+            results = []
+            for index, item in enumerate(st.session_state.quiz_items):
+                selected = st.session_state.get(f"choice_{index}", "Select an answer")
+                is_answered = selected != "Select an answer"
+                if is_answered:
+                    answered += 1
+                # selected is formatted like 'A. choice' — extract the choice text for comparison
+                if is_answered and ". " in selected:
+                    selected_text = selected.split(". ", 1)[1]
+                else:
+                    selected_text = selected if is_answered else ""
+                is_correct = selected_text == item.answer
+                if is_correct:
+                    correct += 1
+                results.append((item, selected_text, is_correct, is_answered))
 
         st.session_state.graded = True
         st.session_state.score = correct
@@ -310,11 +324,15 @@ if st.session_state.quiz_items:
             labels = ["A", "B", "C", "D", "E"]
             for i, ch in enumerate(item.choices):
                 prefix = labels[i] if i < len(labels) else str(i + 1)
-                # highlight the correct answer
+                # highlight the correct answer and indicate the user's selection
                 if ch == item.answer:
-                    choice_rows += f"<div style='margin:6px 0; padding:8px; border-radius:6px; background:#000; color:#fff;'><strong>{prefix}.</strong>&nbsp; {ch}</div>"
+                    # correct answer
+                    choice_rows += f"<div class='choice-card' style='background:#000;color:#fff;'><div class='choice-label'>{prefix}</div><div class='choice-text'>{ch}</div></div>"
+                elif ch == selected:
+                    # user's (incorrect) selection
+                    choice_rows += f"<div class='choice-card' style='border:2px solid #b42318;background:#fff0f0;'><div class='choice-label' style='background:#b42318;'>?</div><div class='choice-text'>{ch}</div></div>"
                 else:
-                    choice_rows += f"<div style='margin:6px 0; padding:8px; border-radius:6px; background:#fafafa; color:#111; border:1px solid #efefef;'><strong>{prefix}.</strong>&nbsp; {ch}</div>"
+                    choice_rows += f"<div class='choice-card'><div class='choice-label' style='background:#777;'> </div><div class='choice-text'>{ch}</div></div>"
 
             st.markdown(
                 f"""
