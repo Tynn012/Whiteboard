@@ -128,12 +128,44 @@ html, body, [class*='css'] {
 .stButton>button { background:#111827; color:#ffffff; border:1px solid #111827; font-weight:700; box-shadow: 0 6px 16px rgba(17, 24, 39, 0.18); }
 .stButton>button:hover { background:#0b1220; border-color:#0b1220; }
 .stSelectbox>div, .stTextInput>div { background:#ffffff; border:1px solid #cbd5e1; }
-.stRadio>div[role="radiogroup"] > label > div { padding: 0.7rem 0.8rem; border-radius:12px; background:#fff; border:1px solid #dbe2ea; margin-bottom:0.5rem; font-weight:600; color:#111827 !important; }
+.stRadio>div[role="radiogroup"] { padding-left:0.35rem; }
+.stRadio>div[role="radiogroup"] > label { display:flex; align-items:flex-start; gap:0.65rem; margin-bottom:0.65rem; }
+.stRadio>div[role="radiogroup"] > label > div { padding: 0.85rem 0.95rem; border-radius:14px; background:#fff; border:1px solid #dbe2ea; font-weight:600; color:#111827 !important; transition: all 0.18s ease; box-shadow: 0 3px 10px rgba(15, 23, 42, 0.03); }
+.stRadio>div[role="radiogroup"] > label:has(input:checked) > div { background:#111827; color:#ffffff !important; border-color:#111827; box-shadow: 0 10px 24px rgba(17, 24, 39, 0.18); transform: translateX(2px); }
+.stRadio>div[role="radiogroup"] > label:has(input:checked) { margin-left:0.15rem; }
 /* Ensure native radio inputs are visible across themes */
-.stRadio input[type="radio"] { display:inline-block !important; opacity:1 !important; width:20px; height:20px; margin-right:10px; vertical-align:middle; accent-color:#111827; }
+.stRadio input[type="radio"] { display:inline-block !important; opacity:1 !important; width:20px; height:20px; margin-right:10px; vertical-align:middle; accent-color:#111827; flex:0 0 auto; margin-top:0.95rem; }
 
 /* Streamlit form labels and markdown readability */
 .stMarkdown, .stText, .stSelectbox, .stRadio, .stSlider, .stCheckbox { color:#111827 !important; }
+
+/* Sidebar header visibility */
+div[data-testid="stSidebar"] .stMarkdown h2,
+div[data-testid="stSidebar"] h2,
+div[data-testid="stSidebar"] .css-10trblm {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.01em;
+}
+
+div[data-testid="stSidebar"] .stMarkdown,
+div[data-testid="stSidebar"] label,
+div[data-testid="stSidebar"] span,
+div[data-testid="stSidebar"] p {
+    color: #f8fafc !important;
+}
+
+div[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+}
+
+div[data-testid="stSidebar"] [data-testid="stSlider"] label,
+div[data-testid="stSidebar"] [data-testid="stSelectbox"] label,
+div[data-testid="stSidebar"] [data-testid="stTextInput"] label,
+div[data-testid="stSidebar"] [data-testid="stCheckbox"] label {
+    color: #f8fafc !important;
+    font-weight: 700 !important;
+}
 
 /* Result area */
 .result-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:0.75rem; margin:0.75rem 0 1rem 0; }
