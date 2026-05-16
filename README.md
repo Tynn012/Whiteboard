@@ -27,14 +27,7 @@ streamlit run app.py
 
 See `requirements.txt` for the minimal runtime dependencies required by the Streamlit app (`streamlit`, `datasets`, `pandas`).
 
-LLM mode (optional)
-
-This project supports an optional LLM generation mode using instruction-tuned models such as `meta-llama/Meta-Llama-3-8B-Instruct`. This mode requires heavier dependencies and a GPU-equipped environment.
-
-- To enable LLM generation install the full requirements in `requirements.txt` (includes `transformers`, `torch`, `accelerate`, `bitsandbytes`).
-- Running the 8B model locally requires a GPU with sufficient memory; using 8-bit loading (`bitsandbytes`) + device_map='auto' helps but may still require modern GPUs (A100, A40, 80GB-class devices). For lower-cost experiments prefer `t5-small` or `t5-base`.
-- If you do not have local GPU resources, consider using Hugging Face Inference endpoints or hosted APIs and update `quiz_engine.ModelBackend` accordingly.
- - This project includes a hosted LLM option that calls the Hugging Face Inference API. Set `HF_TOKEN` in your environment or Streamlit secrets to use it; no local `torch` install required for hosted inference.
+This app runs in dataset-only mode: it loads sample questions from SQuAD v2 and generates multiple-choice options using built-in distractor logic. LLM generation support has been removed to keep the app lightweight and deployable.
 
 ## Fine-tuning notes & notebook
 

@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 
 import streamlit as st
-import os
 
-from quiz_engine import load_clapnq_sample, quiz_to_json
+from quiz_engine import load_clapnq_sample, load_mmlu_sample, quiz_to_json
 
 
 st.set_page_config(
@@ -79,15 +78,14 @@ st.markdown(
 <div class="hero">
     <h1>Board Exam Quiz Forge</h1>
     <p>
-        Powered by SQuAD v2 dataset: Stanford Question Answering Dataset. 
-        Load board-exam style questions with improved randomization, category filtering, 
-        and challenging multiple-choice options with better distractors.
+        Load board-exam style questions from SQuAD v2 (generate choices) or the CAIS MMLU dataset (pre-built multiple-choice).
+        Use MMLU to get 4-choice MCQs directly, or SQuAD v2 for context-based distractors.
     </p>
     <div class="badge-row">
         <span class="badge">SQuAD v2 Dataset</span>
+        <span class="badge">CAIS MMLU Dataset</span>
         <span class="badge">Randomized questions</span>
         <span class="badge">Category filtering</span>
-        <span class="badge">Smart distractors</span>
     </div>
 </div>
 """,
@@ -110,24 +108,7 @@ with st.sidebar:
     category_filter = st.text_input("Filter by category (optional)", placeholder="e.g., history, science, geography...")
     randomize_questions = st.checkbox("Randomize question order", value=True)
     distractor_difficulty = st.slider("Distractor difficulty", min_value=0.0, max_value=1.0, value=0.7, step=0.1, help="Higher = harder distractors")
-    use_llm = st.checkbox("Use LLM for question generation (heavy)", value=False)
-    model_name_input = st.text_input("LLM model name", value="Qwen/Qwen2.5-7B-Instruct")
-    hf_token_input = st.text_input("Hugging Face token (optional)", type="password")
-    # HF token fallback order: explicit input -> Streamlit secrets -> environment variable HF_TOKEN
-    hf_token = hf_token_input or st.secrets.get("HF_TOKEN") or os.environ.get("HF_TOKEN")
-    if not hf_token_input and hf_token:
-        st.caption("Using Hugging Face token from environment/Streamlit secrets")
-    llm_qpp = st.slider("LLM questions per passage", min_value=1, max_value=3, value=1)
     show_expanded_choices = st.checkbox("Show expanded choices under each question", value=False)
-    # If LLM is enabled, allow choosing hosted vs local backend
-    if use_llm:
-        llm_backend_choice = st.selectbox(
-            "LLM backend",
-            options=["Hosted (Hugging Face Inference API)", "Local (transformers)"]
-        )
-        use_hosted_llm = llm_backend_choice.startswith("Hosted")
-    else:
-        use_hosted_llm = False
 
 col_main, col_info = st.columns([1.12, 0.88], gap="large")
 
@@ -137,6 +118,7 @@ with col_main:
     load_col_1, load_col_2 = st.columns([0.55, 0.45])
     with load_col_1:
         load_clicked = st.button("Load SQuAD v2 questions", use_container_width=True, type="primary")
+        load_mmlu_clicked = st.button("Load MMLU questions (4-choice)", use_container_width=True)
     with load_col_2:
         clear_clicked = st.button("Clear quiz", use_container_width=True)
 
@@ -159,11 +141,6 @@ with col_main:
                     category=category_filter if category_filter else None,
                     randomize=randomize_questions,
                     distractor_difficulty=float(distractor_difficulty),
-                    use_llm=bool(use_llm),
-                    use_hosted_llm=bool(use_hosted_llm),
-                    model_name=model_name_input if model_name_input else None,
-                    hf_token=hf_token if hf_token else None,
-                    llm_questions_per_passage=int(llm_qpp),
                 )
                 st.session_state.quiz_items = quiz_items
                 st.session_state.graded = False
@@ -178,6 +155,30 @@ with col_main:
                     st.success(f"✅ Loaded {len(quiz_items)} questions from SQuAD v2 dataset.")
             except Exception as exc:
                 st.error(f"❌ Dataset loading failed: {exc}")
+
+    if load_mmlu_clicked:
+        with st.spinner("Loading multiple-choice questions from CAIS MMLU dataset..."):
+            try:
+                # MMLU already contains choices; we prefer the validation split by default
+                quiz_items = load_mmlu_sample(
+                    split=quiz_split,
+                    max_items=num_questions,
+                    category=category_filter if category_filter else None,
+                    randomize=randomize_questions,
+                )
+                st.session_state.quiz_items = quiz_items
+                st.session_state.graded = False
+                st.session_state.score = 0
+                st.session_state.total = len(quiz_items)
+                for key in list(st.session_state.keys()):
+                    if key.startswith("choice_"):
+                        del st.session_state[key]
+                if not quiz_items:
+                    st.warning("Could not load MMLU quiz items. The dataset schema may differ or the split may be unavailable.")
+                else:
+                    st.success(f"✅ Loaded {len(quiz_items)} questions from CAIS MMLU dataset.")
+            except Exception as exc:
+                st.error(f"❌ MMLU dataset loading failed: {exc}")
 
     if st.session_state.quiz_items:
         export_payload = json.dumps(quiz_to_json(st.session_state.quiz_items), indent=2, ensure_ascii=False)
@@ -195,8 +196,8 @@ with col_info:
         """
         <div class="small-note">
         1. <strong>Configure settings:</strong> Adjust number of questions, pick a split, optionally filter by category, and choose if you want randomization.
-        2. <strong>Load questions:</strong> Click "Load SQuAD v2 questions" to fetch board-exam style questions with improved distractors.
-        3. <strong>Answer:</strong> Select from multiple-choice options (distractors are more challenging and realistic).
+        2. <strong>Load questions:</strong> Click "Load SQuAD v2 questions" to generate distractors from context, or "Load MMLU questions" to load 4-choice MCQs directly.
+        3. <strong>Answer:</strong> Select from multiple-choice options.
         4. <strong>Grade:</strong> Click "Grade my quiz" to see your score and review with explanations.
         </div>
         """,
@@ -286,4 +287,4 @@ if st.session_state.quiz_items:
                 unsafe_allow_html=True,
             )
 else:
-    st.info("Click 'Load from CLAPNQ' to start a quiz.")
+    st.info("Click 'Load SQuAD v2 questions' or 'Load MMLU questions (4-choice)' to start a quiz.")

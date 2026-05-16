@@ -141,133 +141,7 @@ def _sample_answers(text: str, limit: int) -> list[str]:
     return candidates
 
 
-class ModelBackend:
-    """Light wrapper to load an instruction-tuned causal LLM and generate questions.
-
-    This attempts to load the model with 8-bit (bitsandbytes) if available and falls back
-    to a CPU/FP32 load if not.
-    """
-    def __init__(self, model_name: str = DEFAULT_MODEL_NAME, hf_token: str | None = None):
-        if not _HAS_TRANSFORMERS:
-            raise RuntimeError("transformers/torch not available in the environment")
-        self.model_name = model_name
-        self.hf_token = hf_token
-        self.tokenizer = None
-        self.model = None
-        self._load_backend()
-
-    def _load_backend(self):
-        # perform local imports to avoid importing transformers at module import time
-        try:
-            from transformers import AutoModelForCausalLM, AutoTokenizer
-            import torch
-        except Exception as exc:
-            raise RuntimeError("Failed to import transformers/torch for LLM backend") from exc
-
-        kwargs = {}
-        if self.hf_token:
-            kwargs['use_auth_token'] = self.hf_token
-
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, **kwargs)
-
-        # Prefer 8-bit load if bitsandbytes is available
-        try:
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                device_map='auto',
-                load_in_8bit=True,
-                torch_dtype=torch.float16,
-                **kwargs,
-            )
-        except Exception:
-            # fallback: normal load (may be large and require GPU/CPU memory)
-            self.model = AutoModelForCausalLM.from_pretrained(self.model_name, **kwargs)
-
-        self.model.eval()
-
-    def generate(self, passages: Sequence[str], answers: Sequence[str], num_questions_per_passage: int = 1, max_new_tokens: int = 64, temperature: float = 0.0) -> list[dict]:
-        if not passages:
-            return []
-
-        results: list[dict] = []
-        for idx, passage in enumerate(passages):
-            answer = answers[idx] if idx < len(answers) else ""
-            for _ in range(num_questions_per_passage):
-                prompt = (
-                    f"Generate a concise, exam-style question whose answer is '{answer}'.\nContext: {passage}\nQuestion:"
-                )
-                tokenized = self.tokenizer(prompt, return_tensors='pt', truncation=True).to(self.model.device)
-                gen = self.model.generate(
-                    **tokenized,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    do_sample=False,
-                    num_return_sequences=1,
-                )
-                q = self.tokenizer.decode(gen[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
-                # heuristic: take text after 'Question:' if present
-                if 'Question:' in q:
-                    q = q.split('Question:')[-1].strip()
-                results.append({
-                    'context_id': f'passage-{idx+1}',
-                    'context': passage,
-                    'question': q,
-                    'answer': answer,
-                })
-        return results
-
-
-class HostedModelBackend:
-    """Simple hosted inference backend using Hugging Face Inference API.
-
-    This uses REST calls to the HF Inference API and requires an HF token with inference access.
-    """
-    def __init__(self, model_name: str = DEFAULT_MODEL_NAME, hf_token: str | None = None, api_url: str | None = None):
-        self.model_name = model_name
-        self.hf_token = hf_token
-        self.api_url = api_url or f"https://api-inference.huggingface.co/models/{model_name}"
-
-    def _call_inference(self, prompt: str, max_new_tokens: int = 64, temperature: float = 0.0) -> str:
-        import requests
-        headers = {}
-        if self.hf_token:
-            headers["Authorization"] = f"Bearer {self.hf_token}"
-        payload = {
-            "inputs": prompt,
-            "parameters": {"max_new_tokens": max_new_tokens, "temperature": temperature, "return_full_text": False},
-        }
-        resp = requests.post(self.api_url, headers=headers, json=payload, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        # HF returns list of generated objects or dict depending on model/endpoint
-        if isinstance(data, list) and len(data) > 0:
-            text = data[0].get("generated_text") or data[0].get("generated_text", "")
-            return text or ""
-        if isinstance(data, dict):
-            return data.get("generated_text", "")
-        return ""
-
-    def generate(self, passages: Sequence[str], answers: Sequence[str], num_questions_per_passage: int = 1, max_new_tokens: int = 64, temperature: float = 0.0) -> list[dict]:
-        results: list[dict] = []
-        for idx, passage in enumerate(passages):
-            answer = answers[idx] if idx < len(answers) else ""
-            for _ in range(num_questions_per_passage):
-                prompt = (
-                    f"Generate a concise, exam-style question whose answer is '{answer}'.\nContext: {passage}\nQuestion:"
-                )
-                try:
-                    q = self._call_inference(prompt, max_new_tokens=max_new_tokens, temperature=temperature)
-                except Exception:
-                    q = ""
-                if 'Question:' in q:
-                    q = q.split('Question:')[-1].strip()
-                results.append({
-                    'context_id': f'passage-{idx+1}',
-                    'context': passage,
-                    'question': q,
-                    'answer': answer,
-                })
-        return results
+# LLM backends have been removed — this module provides dataset-only sampling and distractor logic.
 
 
 def _extract_context_entities(context: str, limit: int = 10) -> list[str]:
@@ -366,11 +240,6 @@ def load_clapnq_sample(
     category: str | None = None,
     randomize: bool = True,
     distractor_difficulty: float = 0.7,
-    use_llm: bool = False,
-    use_hosted_llm: bool = False,
-    model_name: str = DEFAULT_MODEL_NAME,
-    hf_token: str | None = None,
-    llm_questions_per_passage: int = 1,
 ) -> list[QuizQuestion]:
     """Load sample questions from SQuAD v2 dataset for board-exam style review.
     
@@ -452,29 +321,7 @@ def load_clapnq_sample(
             except Exception as item_err:
                 continue
         
-        # If using an LLM backend, generate questions from passages/answers
-        if use_llm:
-            passages = [c.context for c in candidates]
-            answers = [c.answer for c in candidates]
-            if use_hosted_llm:
-                backend = HostedModelBackend(model_name=model_name, hf_token=hf_token)
-            else:
-                if not _HAS_TRANSFORMERS:
-                    raise RuntimeError("transformers/torch are required for local LLM generation mode")
-                backend = ModelBackend(model_name=model_name, hf_token=hf_token)
-
-            raw_items = backend.generate(passages[: max_items], answers[: max_items], num_questions_per_passage=llm_questions_per_passage)
-            # Build quiz items from generated content
-            quiz_items = []
-            for itm in raw_items[:max_items]:
-                q = normalize_whitespace(str(itm.get('question', '')))
-                a = normalize_whitespace(str(itm.get('answer', '')))
-                ctx = normalize_whitespace(str(itm.get('context', '')))
-                if not q or not a:
-                    continue
-                choices = build_choices(a, [x.answer for x in candidates], ctx, difficulty=distractor_difficulty)
-                quiz_items.append(QuizQuestion(question=q, answer=a, context=ctx, choices=tuple(choices)))
-            return quiz_items
+        # Dataset-only mode: build choices from sampled SQuAD items
 
         # If requested, randomize candidate order before selecting final set
         if randomize:
@@ -500,3 +347,132 @@ def load_clapnq_sample(
         
     except Exception as exc:
         raise RuntimeError(f"Failed to load SQuAD v2 dataset: {exc}")
+
+
+def load_mmlu_sample(
+    split: str = "validation",
+    max_items: int = 6,
+    category: str | None = None,
+    randomize: bool = True,
+) -> list[QuizQuestion]:
+    """Load multiple-choice questions from the CAIS MMLU dataset (pre-constructed choices).
+
+    The function is defensive about dataset schema differences across versions on the Hub.
+    It will try several common field names for choices and answers and fall back
+    gracefully if fields are missing.
+    """
+    try:
+        from datasets import load_dataset
+
+        ds = load_dataset("cais/mmlu", split=split)
+        items: list[QuizQuestion] = []
+
+        # Helper to find choices and correct answer in a dataset item
+        def _extract_choices_and_answer(item: dict):
+            # possible keys for choices
+            choice_keys = ["choices", "options", "answer_choices", "candidates", "options_list"]
+            answer_keys = ["answer", "correct_answer", "label", "answer_key", "correct", "gold", "correct_idx", "answer_idx"]
+
+            choices = None
+            for k in choice_keys:
+                if k in item and isinstance(item[k], (list, tuple)):
+                    choices = list(item[k])
+                    break
+
+            # If choices are provided as dict (label->text), convert
+            if choices is None:
+                for k in choice_keys:
+                    if k in item and isinstance(item[k], dict):
+                        # assume mapping like {"A": "...", "B": "..."}
+                        choices = [v for _, v in sorted(item[k].items())]
+                        break
+
+            # Try to locate the answer; it may be an index, a letter, or text
+            answer = None
+            for k in answer_keys:
+                if k in item:
+                    answer = item[k]
+                    break
+
+            return choices, answer
+
+        # iterate and collect
+        for entry in ds:
+            try:
+                data = dict(entry)
+                # basic fields
+                question = normalize_whitespace(str(data.get("question", "")))
+                context = normalize_whitespace(str(data.get("context", ""))) if "context" in data else ""
+
+                # basic filtering
+                if not question:
+                    continue
+                if category:
+                    cat_lower = category.lower()
+                    if not (cat_lower in question.lower() or cat_lower in context.lower()):
+                        continue
+
+                choices, answer_field = _extract_choices_and_answer(data)
+
+                # if no explicit choices, skip (MMLU provides choices)
+                if not choices or len(choices) < 2:
+                    continue
+
+                # normalize choices
+                choices = [normalize_whitespace(str(c)) for c in choices]
+
+                # Derive canonical answer text
+                answer_text = None
+                if isinstance(answer_field, int):
+                    if 0 <= answer_field < len(choices):
+                        answer_text = choices[answer_field]
+                elif isinstance(answer_field, str):
+                    a = answer_field.strip()
+                    # single-letter label (A/B/C/D)
+                    if len(a) == 1 and a.upper() >= "A" and a.upper() <= "Z":
+                        idx = ord(a.upper()) - ord("A")
+                        if 0 <= idx < len(choices):
+                            answer_text = choices[idx]
+                    else:
+                        # try to match by text
+                        for c in choices:
+                            if c.lower() == a.lower():
+                                answer_text = c
+                                break
+
+                # As a last resort, if there's an 'answer' in the entry that's plain text
+                if answer_text is None:
+                    for k in ("answer", "correct_answer", "gold"):
+                        if k in data and isinstance(data[k], str):
+                            a = data[k].strip()
+                            for c in choices:
+                                if c.lower() == a.lower():
+                                    answer_text = c
+                                    break
+
+                if answer_text is None:
+                    # unable to resolve canonical answer; skip item
+                    continue
+
+                items.append(
+                    QuizQuestion(
+                        question=question,
+                        answer=answer_text,
+                        context=context,
+                        choices=tuple(choices[:4]) if len(choices) >= 4 else tuple(choices),
+                    )
+                )
+
+                if len(items) >= max_items:
+                    break
+
+            except Exception:
+                continue
+
+        if randomize:
+            random.shuffle(items)
+
+        return items[:max_items]
+
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load MMLU dataset: {exc}")
