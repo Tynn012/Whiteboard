@@ -296,7 +296,7 @@ with col_info:
     st.markdown('<div class="panel"><h3>How it works</h3></div>', unsafe_allow_html=True)
     st.markdown(
         """
-        <div class="small-note">
+        <div class="small-note">\n
         1. <strong>Choose a subject:</strong> Select an `MMLU config` such as `all` or `machine_learning`.\n
         2. <strong>Load quiz:</strong> Click "Load MMLU questions (4-choice)" to fetch pre-built multiple-choice items.\n
         3. <strong>Answer clearly:</strong> Each choice is displayed as a bordered card with a visible A/B/C/D label.\n
