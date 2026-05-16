@@ -153,13 +153,15 @@ st.markdown(
 <div class="hero">
     <h1>Board Exam Quiz Forge</h1>
     <p>
-        Powered by PrimeQA's CLAPNQ dataset: Comprehensive Long-form Answers from Passages. 
-        Load pre-curated board-exam style questions and test your knowledge with instant grading.
+        Powered by SQuAD v2 dataset: Stanford Question Answering Dataset. 
+        Load board-exam style questions with improved randomization, category filtering, 
+        and challenging multiple-choice options with better distractors.
     </p>
     <div class="badge-row">
-        <span class="badge">CLAPNQ Dataset</span>
-        <span class="badge">Board-exam questions</span>
-        <span class="badge">Instant grading</span>
+        <span class="badge">SQuAD v2 Dataset</span>
+        <span class="badge">Randomized questions</span>
+        <span class="badge">Category filtering</span>
+        <span class="badge">Smart distractors</span>
     </div>
 </div>
 """,
@@ -179,6 +181,8 @@ with st.sidebar:
     st.markdown("## Quiz settings")
     num_questions = st.slider("Number of questions", min_value=3, max_value=20, value=6)
     quiz_split = st.selectbox("Dataset split", options=["train", "validation"], index=0)
+    category_filter = st.text_input("Filter by category (optional)", placeholder="e.g., history, science, geography...")
+    randomize_questions = st.checkbox("Randomize question order", value=True)
 
 col_main, col_info = st.columns([1.12, 0.88], gap="large")
 
@@ -187,7 +191,7 @@ with col_main:
     
     load_col_1, load_col_2 = st.columns([0.55, 0.45])
     with load_col_1:
-        load_clicked = st.button("Load from CLAPNQ", use_container_width=True, type="primary")
+        load_clicked = st.button("Load SQuAD v2 questions", use_container_width=True, type="primary")
     with load_col_2:
         clear_clicked = st.button("Clear quiz", use_container_width=True)
 
@@ -202,9 +206,14 @@ with col_main:
         st.rerun()
 
     if load_clicked:
-        with st.spinner("Loading board exam questions from CLAPNQ dataset..."):
+        with st.spinner("Loading board exam questions from SQuAD v2 dataset..."):
             try:
-                quiz_items = load_clapnq_sample(split=quiz_split, max_items=num_questions)
+                quiz_items = load_clapnq_sample(
+                    split=quiz_split, 
+                    max_items=num_questions,
+                    category=category_filter if category_filter else None,
+                    randomize=randomize_questions
+                )
                 st.session_state.quiz_items = quiz_items
                 st.session_state.graded = False
                 st.session_state.score = 0
@@ -213,9 +222,9 @@ with col_main:
                     if key.startswith("choice_"):
                         del st.session_state[key]
                 if not quiz_items:
-                    st.warning("Could not load quiz items from the dataset. Please try again.")
+                    st.warning("Could not load quiz items from the dataset. Please try again or adjust your category filter.")
                 else:
-                    st.success(f"✅ Loaded {len(quiz_items)} questions from CLAPNQ dataset.")
+                    st.success(f"✅ Loaded {len(quiz_items)} questions from SQuAD v2 dataset.")
             except Exception as exc:
                 st.error(f"❌ Dataset loading failed: {exc}")
 
@@ -234,10 +243,10 @@ with col_info:
     st.markdown(
         """
         <div class="small-note">
-        1. Adjust the number of questions in the sidebar.
-        2. Click "Load from CLAPNQ" to fetch board-exam style questions.
-        3. Answer each question by selecting from the multiple-choice options.
-        4. Click "Grade my quiz" to see your score and review answers.
+        1. <strong>Configure settings:</strong> Adjust number of questions, pick a split, optionally filter by category, and choose if you want randomization.
+        2. <strong>Load questions:</strong> Click "Load SQuAD v2 questions" to fetch board-exam style questions with improved distractors.
+        3. <strong>Answer:</strong> Select from multiple-choice options (distractors are more challenging and realistic).
+        4. <strong>Grade:</strong> Click "Grade my quiz" to see your score and review with explanations.
         </div>
         """,
         unsafe_allow_html=True,

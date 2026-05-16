@@ -223,22 +223,53 @@ def generate_quiz(
 
 
 def build_choices(answer: str, answer_pool: Sequence[str], context: str, num_choices: int = 4) -> list[str]:
+    """Build multiple choice options with challenging distractors.
+    
+    Prioritizes entity-based distractors from context that are more plausible wrong answers.
+    """
     distractors: list[str] = []
-    candidate_sources = list(answer_pool) + _sample_answers(context, 24)
-    for candidate in candidate_sources:
-        candidate = normalize_whitespace(candidate)
-        if not candidate:
+    answer_lower = answer.lower()
+    
+    # Extract entities/phrases from context that could be plausible distractors
+    context_entities = _extract_context_entities(context)
+    
+    # Prioritize context-based entities that aren't the answer
+    for entity in context_entities:
+        entity_normalized = normalize_whitespace(entity)
+        if not entity_normalized or entity_normalized.lower() == answer_lower:
             continue
-        if candidate.lower() == answer.lower():
-            continue
-        if candidate not in distractors:
-            distractors.append(candidate)
+        if entity_normalized not in distractors:
+            distractors.append(entity_normalized)
         if len(distractors) >= num_choices - 1:
             break
-
+    
+    # Fall back to sampling entities from context
+    if len(distractors) < num_choices - 1:
+        sampled = _sample_answers(context, 15)
+        for candidate in sampled:
+            candidate = normalize_whitespace(candidate)
+            if not candidate or candidate.lower() == answer_lower:
+                continue
+            if candidate not in distractors:
+                distractors.append(candidate)
+            if len(distractors) >= num_choices - 1:
+                break
+    
+    # Fill remaining slots with answer pool (if available from other questions)
+    if len(distractors) < num_choices - 1:
+        for candidate in answer_pool:
+            candidate = normalize_whitespace(str(candidate))
+            if not candidate or candidate.lower() == answer_lower:
+                continue
+            if candidate not in distractors:
+                distractors.append(candidate)
+            if len(distractors) >= num_choices - 1:
+                break
+    
+    # Last resort: context-specific fallbacks
     while len(distractors) < num_choices - 1:
-        filler = random.choice(_fallback_distractors())
-        if filler.lower() != answer.lower() and filler not in distractors:
+        filler = random.choice(_get_context_fallbacks(context))
+        if filler.lower() != answer_lower and filler not in distractors:
             distractors.append(filler)
 
     choices = [answer] + distractors[: num_choices - 1]
@@ -277,6 +308,69 @@ def _sample_answers(text: str, limit: int) -> list[str]:
     return candidates
 
 
+def _extract_context_entities(context: str, limit: int = 10) -> list[str]:
+    """Extract key entities and phrases from context that could serve as plausible distractors."""
+    if not context:
+        return []
+    
+    entities: list[str] = []
+    
+    # Extract capitalized phrases (proper nouns, organizations, etc.)
+    proper_noun_pattern = r"\b(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b"
+    for match in re.finditer(proper_noun_pattern, context):
+        entity = normalize_whitespace(match.group(0))
+        if entity and len(entity) > 2:
+            entities.append(entity)
+            if len(entities) >= limit:
+                return entities
+    
+    # Extract numbers with context
+    number_pattern = r"\b\d+(?:[.,]\d+)?(?:%|\s*(?:million|billion|trillion|thousand|hundred|percent))?\b"
+    for match in re.finditer(number_pattern, context):
+        entity = normalize_whitespace(match.group(0))
+        if entity:
+            entities.append(entity)
+            if len(entities) >= limit:
+                return entities
+    
+    return entities
+
+
+def _get_context_fallbacks(context: str) -> list[str]:
+    """Generate context-aware fallback distractors."""
+    # Determine if context seems to be about history, science, geography, etc.
+    context_lower = context.lower()
+    
+    if any(word in context_lower for word in ["century", "year", "war", "president", "king"]):
+        return [
+            "An earlier period",
+            "A later period",
+            "During the same era",
+            "In the previous century",
+        ]
+    elif any(word in context_lower for word in ["species", "animal", "plant", "organism", "cell"]):
+        return [
+            "A different species",
+            "A related organism",
+            "An unrelated species",
+            "A extinct relative",
+        ]
+    elif any(word in context_lower for word in ["country", "city", "region", "capital", "located"]):
+        return [
+            "A neighboring region",
+            "A different continent",
+            "A nearby area",
+            "The same general region",
+        ]
+    else:
+        return [
+            "Another relevant option",
+            "A related concept",
+            "A similar alternative",
+            "A plausible but incorrect choice",
+        ]
+
+
 def _fallback_distractors() -> list[str]:
     return [
         "All of the above",
@@ -304,12 +398,14 @@ def quiz_to_json(items: Sequence[QuizQuestion]) -> list[dict]:
     return [item.to_dict() for item in items]
 
 
-def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQuestion]:
-    """Load sample questions from the PrimeQA CLAPNQ dataset for board-exam style review.
+def load_clapnq_sample(split: str = "train", max_items: int = 6, category: str | None = None, randomize: bool = True) -> list[QuizQuestion]:
+    """Load sample questions from SQuAD v2 dataset for board-exam style review.
     
     Args:
         split: 'train' or 'validation' split
         max_items: number of items to load
+        category: optional keyword to filter questions by topic/category
+        randomize: whether to randomize question order (default: True)
         
     Returns:
         List of QuizQuestion objects ready for grading
@@ -320,14 +416,20 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQue
         dataset = load_dataset("squad_v2", split=split)
         quiz_items: list[QuizQuestion] = []
         seen_questions: set[str] = set()
+        candidates: list[QuizQuestion] = []
         
-        for idx in range(min(max_items, len(dataset))):
+        # Scan through dataset to find matching items
+        for idx in range(len(dataset)):
+            if len(candidates) >= max_items * 3:  # Over-sample to have room for filtering
+                break
+                
             try:
                 item = dataset[idx]
                 
                 # SQuAD v2 schema: question, context, answers (list with text and answer_start)
                 question = normalize_whitespace(str(item.get("question", "")))
                 context = normalize_whitespace(str(item.get("context", "")))
+                title = normalize_whitespace(str(item.get("title", "")))
                 
                 if not question or not context:
                     continue
@@ -336,6 +438,14 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQue
                 if fingerprint in seen_questions:
                     continue
                 seen_questions.add(fingerprint)
+                
+                # Filter by category if provided
+                if category:
+                    category_lower = category.lower()
+                    if not (category_lower in question.lower() or 
+                            category_lower in context.lower() or 
+                            category_lower in title.lower()):
+                        continue
                 
                 # Extract answer from answers list
                 answers = item.get("answers", {})
@@ -355,7 +465,7 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQue
                 
                 choices = build_choices(answer, [answer], context)
                 
-                quiz_items.append(
+                candidates.append(
                     QuizQuestion(
                         question=question,
                         answer=answer,
@@ -363,12 +473,16 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQue
                         choices=tuple(choices),
                     )
                 )
-                
-                if len(quiz_items) >= max_items:
-                    break
                     
             except Exception as item_err:
                 continue
+        
+        # Select up to max_items from candidates
+        quiz_items = candidates[:max_items]
+        
+        # Randomize order if requested
+        if randomize and len(quiz_items) > 1:
+            random.shuffle(quiz_items)
         
         return quiz_items
         
