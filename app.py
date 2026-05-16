@@ -103,6 +103,15 @@ with st.sidebar:
     if not hf_token_input and hf_token:
         st.caption("Using Hugging Face token from environment/Streamlit secrets")
     llm_qpp = st.slider("LLM questions per passage", min_value=1, max_value=3, value=1)
+    # If LLM is enabled, allow choosing hosted vs local backend
+    if use_llm:
+        llm_backend_choice = st.selectbox(
+            "LLM backend",
+            options=["Hosted (Hugging Face Inference API)", "Local (transformers)"]
+        )
+        use_hosted_llm = llm_backend_choice.startswith("Hosted")
+    else:
+        use_hosted_llm = False
 
 col_main, col_info = st.columns([1.12, 0.88], gap="large")
 
@@ -135,6 +144,7 @@ with col_main:
                     randomize=randomize_questions,
                     distractor_difficulty=float(distractor_difficulty),
                     use_llm=bool(use_llm),
+                    use_hosted_llm=bool(use_hosted_llm),
                     model_name=model_name_input if model_name_input else None,
                     hf_token=hf_token if hf_token else None,
                     llm_questions_per_passage=int(llm_qpp),

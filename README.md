@@ -34,6 +34,7 @@ This project supports an optional LLM generation mode using instruction-tuned mo
 - To enable LLM generation install the full requirements in `requirements.txt` (includes `transformers`, `torch`, `accelerate`, `bitsandbytes`).
 - Running the 8B model locally requires a GPU with sufficient memory; using 8-bit loading (`bitsandbytes`) + device_map='auto' helps but may still require modern GPUs (A100, A40, 80GB-class devices). For lower-cost experiments prefer `t5-small` or `t5-base`.
 - If you do not have local GPU resources, consider using Hugging Face Inference endpoints or hosted APIs and update `quiz_engine.ModelBackend` accordingly.
+ - This project includes a hosted LLM option that calls the Hugging Face Inference API. Set `HF_TOKEN` in your environment or Streamlit secrets to use it; no local `torch` install required for hosted inference.
 
 ## Fine-tuning notes & notebook
 

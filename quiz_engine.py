@@ -217,6 +217,59 @@ class ModelBackend:
         return results
 
 
+class HostedModelBackend:
+    """Simple hosted inference backend using Hugging Face Inference API.
+
+    This uses REST calls to the HF Inference API and requires an HF token with inference access.
+    """
+    def __init__(self, model_name: str = DEFAULT_MODEL_NAME, hf_token: str | None = None, api_url: str | None = None):
+        self.model_name = model_name
+        self.hf_token = hf_token
+        self.api_url = api_url or f"https://api-inference.huggingface.co/models/{model_name}"
+
+    def _call_inference(self, prompt: str, max_new_tokens: int = 64, temperature: float = 0.0) -> str:
+        import requests
+        headers = {}
+        if self.hf_token:
+            headers["Authorization"] = f"Bearer {self.hf_token}"
+        payload = {
+            "inputs": prompt,
+            "parameters": {"max_new_tokens": max_new_tokens, "temperature": temperature, "return_full_text": False},
+        }
+        resp = requests.post(self.api_url, headers=headers, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        # HF returns list of generated objects or dict depending on model/endpoint
+        if isinstance(data, list) and len(data) > 0:
+            text = data[0].get("generated_text") or data[0].get("generated_text", "")
+            return text or ""
+        if isinstance(data, dict):
+            return data.get("generated_text", "")
+        return ""
+
+    def generate(self, passages: Sequence[str], answers: Sequence[str], num_questions_per_passage: int = 1, max_new_tokens: int = 64, temperature: float = 0.0) -> list[dict]:
+        results: list[dict] = []
+        for idx, passage in enumerate(passages):
+            answer = answers[idx] if idx < len(answers) else ""
+            for _ in range(num_questions_per_passage):
+                prompt = (
+                    f"Generate a concise, exam-style question whose answer is '{answer}'.\nContext: {passage}\nQuestion:"
+                )
+                try:
+                    q = self._call_inference(prompt, max_new_tokens=max_new_tokens, temperature=temperature)
+                except Exception:
+                    q = ""
+                if 'Question:' in q:
+                    q = q.split('Question:')[-1].strip()
+                results.append({
+                    'context_id': f'passage-{idx+1}',
+                    'context': passage,
+                    'question': q,
+                    'answer': answer,
+                })
+        return results
+
+
 def _extract_context_entities(context: str, limit: int = 10) -> list[str]:
     """Extract key entities and phrases from context that could serve as plausible distractors."""
     if not context:
@@ -314,6 +367,7 @@ def load_clapnq_sample(
     randomize: bool = True,
     distractor_difficulty: float = 0.7,
     use_llm: bool = False,
+    use_hosted_llm: bool = False,
     model_name: str = DEFAULT_MODEL_NAME,
     hf_token: str | None = None,
     llm_questions_per_passage: int = 1,
@@ -400,12 +454,15 @@ def load_clapnq_sample(
         
         # If using an LLM backend, generate questions from passages/answers
         if use_llm:
-            if not _HAS_TRANSFORMERS:
-                raise RuntimeError("transformers/torch are required for LLM generation mode")
-            # Prepare inputs
             passages = [c.context for c in candidates]
             answers = [c.answer for c in candidates]
-            backend = ModelBackend(model_name=model_name, hf_token=hf_token)
+            if use_hosted_llm:
+                backend = HostedModelBackend(model_name=model_name, hf_token=hf_token)
+            else:
+                if not _HAS_TRANSFORMERS:
+                    raise RuntimeError("transformers/torch are required for local LLM generation mode")
+                backend = ModelBackend(model_name=model_name, hf_token=hf_token)
+
             raw_items = backend.generate(passages[: max_items], answers[: max_items], num_questions_per_passage=llm_questions_per_passage)
             # Build quiz items from generated content
             quiz_items = []

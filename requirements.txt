@@ -6,3 +6,4 @@ pandas>=2.0.0
 # were moved to requirements-llm.txt to avoid failing Streamlit builds.
 # To install LLM-capable deps, run:
 # python -m pip install -r requirements-llm.txt
+requests>=2.31.0
