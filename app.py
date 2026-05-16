@@ -17,132 +17,39 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Merriweather:wght@700&display=swap');
-
-:root {
-    --bg-1: #f8f1e6;
-    --bg-2: #efe4d1;
-    --ink: #182033;
-    --muted: #5b657a;
-    --card: rgba(255, 255, 255, 0.82);
-    --border: rgba(24, 32, 51, 0.08);
-    --accent: #c75b12;
-    --accent-soft: rgba(199, 91, 18, 0.12);
-    --good: #0f7b52;
-    --bad: #b42318;
-}
-
 html, body, [class*='css'] {
-    font-family: 'Manrope', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    background: #ffffff;
+    color: #000000;
 }
 
 .stApp {
-    background:
-        radial-gradient(circle at top left, rgba(199, 91, 18, 0.12), transparent 26%),
-        radial-gradient(circle at bottom right, rgba(15, 123, 82, 0.08), transparent 22%),
-        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
-    color: var(--ink);
+    background: #ffffff;
+    color: #000000;
 }
 
-.block-container {
-    padding-top: 2rem;
-    padding-bottom: 3rem;
-}
+.block-container { padding-top: 1.2rem; padding-bottom: 1.2rem; }
 
-.hero {
-    padding: 1.4rem 1.5rem;
-    background: rgba(255, 255, 255, 0.72);
-    border: 1px solid var(--border);
-    border-radius: 26px;
-    box-shadow: 0 24px 60px rgba(24, 32, 51, 0.08);
-    backdrop-filter: blur(12px);
-    margin-bottom: 1rem;
-}
+.hero { padding: 1rem; background: transparent; border-bottom: 1px solid #e6e6e6; margin-bottom: 1rem; }
+.hero h1 { font-size: 1.6rem; margin: 0; font-weight: 700; }
+.hero p { margin: 4px 0 0 0; color: #222; font-size: 0.95rem; }
 
-.hero h1 {
-    font-family: 'Merriweather', serif;
-    font-size: 2.2rem;
-    margin-bottom: 0.35rem;
-    color: var(--ink);
-}
+.badge-row { display:flex; gap:0.4rem; margin-top:0.6rem; }
+.badge { font-size:0.8rem; color:#111; background:#f4f4f4; padding:0.25rem 0.6rem; border-radius:999px; }
 
-.hero p {
-    margin: 0;
-    color: var(--muted);
-    font-size: 1rem;
-    line-height: 1.6;
-}
+.panel { background: transparent; border: 1px solid #efefef; border-radius:8px; padding:0.8rem; margin-bottom:1rem; }
+.panel h3 { margin:0; font-size:1.05rem; font-weight:700; }
 
-.badge-row {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 0.9rem;
-}
+.question-card { padding:0.85rem; border-radius:8px; background:#fff; border:1px solid #f0f0f0; margin-bottom:0.9rem; }
+.question-title { font-weight:700; margin-bottom:0.25rem; }
+.question-meta { color:#111; font-size:0.95rem; }
+.small-note { color:#444; font-size:0.92rem; }
 
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-size: 0.85rem;
-    font-weight: 700;
-}
+.correct { color: #007a3d; font-weight:700; }
+.incorrect { color: #b42318; font-weight:700; }
 
-.panel {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 22px;
-    padding: 1rem 1.05rem;
-    box-shadow: 0 20px 45px rgba(24, 32, 51, 0.06);
-    margin-bottom: 1rem;
-}
-
-.panel h3 {
-    margin-top: 0;
-    margin-bottom: 0.6rem;
-    font-family: 'Merriweather', serif;
-    color: var(--ink);
-}
-
-.question-card {
-    padding: 1rem 1rem 0.25rem;
-    margin-bottom: 1rem;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid var(--border);
-    box-shadow: 0 14px 30px rgba(24, 32, 51, 0.05);
-}
-
-.question-title {
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--ink);
-    margin-bottom: 0.45rem;
-}
-
-.question-meta {
-    color: var(--muted);
-    font-size: 0.9rem;
-    margin-bottom: 0.65rem;
-}
-
-.correct {
-    color: var(--good);
-    font-weight: 700;
-}
-
-.incorrect {
-    color: var(--bad);
-    font-weight: 700;
-}
-
-.small-note {
-    color: var(--muted);
-    font-size: 0.92rem;
-}
+/* Reduce visual clutter on widgets */
+.stButton>button, .stSelectbox>div, .stTextInput>div { border-radius:6px; }
 </style>
 """,
     unsafe_allow_html=True,
