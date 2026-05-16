@@ -225,7 +225,7 @@ if "total" not in st.session_state:
     st.session_state.total = 0
 
 with st.sidebar:
-    st.markdown('<div class="font-color: #FFFFFF;"><h2>How it works</h2></div>', unsafe_allow_html=True)
+    st.markdown('<div class="font-color: #FFFFFF !important;"><h2>QUIZ SETTINGS</h2></div>', unsafe_allow_html=True)
     num_questions = st.slider("Number of questions", min_value=1, max_value=50, value=6)
     # Removed split and category filter to simplify the UI; we default to validation split
     mmlu_config_select = st.selectbox("MMLU subset", options=MMLU_CONFIGS + ["Other (type...)"], index=MMLU_CONFIGS.index("all"))
