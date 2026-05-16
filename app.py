@@ -4,7 +4,7 @@ import json
 
 import streamlit as st
 
-from quiz_engine import load_mmlu_sample, quiz_to_json
+from quiz_engine import load_mmlu_sample, quiz_to_json, QuizQuestion
 
 # Known CAIS MMLU configs (keeps the UI friendly and avoids an extra Hub query)
 MMLU_CONFIGS = [
@@ -236,6 +236,136 @@ with st.sidebar:
     randomize_questions = st.checkbox("Randomize question order", value=True)
     show_expanded_choices = st.checkbox("Show expanded choices under each question", value=False)
 
+    # Allow users to upload a local CSV/JSONL file with quiz items
+    uploaded_quiz_file = st.file_uploader(
+        "Upload quiz CSV/JSONL (optional)", type=["csv", "json", "jsonl"], help="CSV should include a 'choices' column (JSON/JSONL may contain arrays)."
+    )
+
+    def _parse_choices_field(val):
+        import ast
+        if val is None:
+            return []
+        if isinstance(val, (list, tuple)):
+            return [str(x) for x in val]
+        if isinstance(val, str):
+            s = val.strip()
+            # try literal_eval for JSON-like lists
+            try:
+                parsed = ast.literal_eval(s)
+                if isinstance(parsed, (list, tuple)):
+                    return [str(x) for x in parsed]
+            except Exception:
+                pass
+            # common delimiters
+            for d in ("||", "|", ";", "\t", " / "):
+                if d in s:
+                    return [p.strip() for p in s.split(d) if p.strip()]
+            # fallback: return the raw string as single choice
+            return [s] if s else []
+        return []
+
+    def load_quiz_from_file(uploaded_file):
+        import pandas as pd
+        rows = []
+        name = getattr(uploaded_file, "name", "")
+        try:
+            if name.lower().endswith(".csv"):
+                df = pd.read_csv(uploaded_file)
+                rows = df.to_dict(orient="records")
+            else:
+                # read as text and try JSON array or JSONL
+                txt = uploaded_file.read().decode("utf-8")
+                try:
+                    parsed = json.loads(txt)
+                    if isinstance(parsed, list):
+                        rows = parsed
+                    elif isinstance(parsed, dict):
+                        rows = [parsed]
+                except Exception:
+                    for line in txt.splitlines():
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rows.append(json.loads(line))
+                        except Exception:
+                            continue
+        except Exception as exc:
+            raise RuntimeError(f"Failed to read uploaded file: {exc}")
+
+        items: list[QuizQuestion] = []
+        for r in rows:
+            try:
+                q = r.get("question") or r.get("prompt") or r.get("text") or ""
+                ctx = r.get("context", "") or ""
+                # find choices in several common keys
+                c = None
+                for k in ("choices", "options", "answer_choices", "candidates", "options_list"):
+                    if k in r:
+                        c = r[k]
+                        break
+
+                choices = _parse_choices_field(c)
+
+                # support per-column choice fields like choice_a, choice_b
+                if not choices:
+                    chs = []
+                    for col in ("choice_a", "choice_b", "choice_c", "choice_d", "A", "B", "C", "D"):
+                        if col in r and r[col]:
+                            chs.append(r[col])
+                    choices = chs
+
+                if not choices:
+                    continue
+
+                ans = r.get("answer") or r.get("answer_text") or r.get("answer_key") or r.get("label") or ""
+                # resolve answer text
+                answer_text = ""
+                if isinstance(ans, int) and 0 <= ans < len(choices):
+                    answer_text = choices[ans]
+                elif isinstance(ans, str) and len(ans.strip()) == 1 and ans.strip().isalpha():
+                    idx = ord(ans.strip().upper()) - 65
+                    if 0 <= idx < len(choices):
+                        answer_text = choices[idx]
+                    else:
+                        answer_text = ans
+                else:
+                    match = next((c for c in choices if str(c).strip().lower() == str(ans).strip().lower()), None)
+                    answer_text = match or (ans or "")
+
+                if not q or not choices or not answer_text:
+                    continue
+
+                items.append(
+                    QuizQuestion(
+                        question=str(q),
+                        answer=str(answer_text),
+                        context=str(ctx),
+                        choices=tuple(choices[:4]) if len(choices) >= 4 else tuple(choices),
+                    )
+                )
+            except Exception:
+                continue
+
+        return items
+
+    if uploaded_quiz_file:
+        if st.button("Load uploaded quiz file", use_container_width=True):
+            try:
+                quiz_items = load_quiz_from_file(uploaded_quiz_file)
+                if quiz_items:
+                    st.session_state.quiz_items = quiz_items[:num_questions]
+                    st.session_state.graded = False
+                    st.session_state.score = 0
+                    st.session_state.total = len(st.session_state.quiz_items)
+                    for key in list(st.session_state.keys()):
+                        if key.startswith("choice_"):
+                            del st.session_state[key]
+                    st.success(f"✅ Loaded {len(st.session_state.quiz_items)} questions from uploaded file.")
+                else:
+                    st.warning("Uploaded file parsed but no valid quiz items found.")
+            except Exception as exc:
+                st.error(f"Failed to parse uploaded file: {exc}")
 col_main, col_info = st.columns([1.12, 0.88], gap="large")
 
 with col_main:

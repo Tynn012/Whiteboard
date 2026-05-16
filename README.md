@@ -37,6 +37,12 @@ If you want to fine-tune a question-generation checkpoint on your own dataset (K
 
 This file contains a cell-by-cell Kaggle/Colab workflow for preparing data, training a Hugging Face text-to-text model, and exporting a lightweight checkpoint for inference.
 
+## Augmenting MMLU and loading local quizzes
+
+- A ready-to-run Kaggle snippet to augment the CAIS MMLU dataset with your own CSV/JSONL data is provided in [docs/augment_mmlu_kaggle.md](docs/augment_mmlu_kaggle.md).
+- The Streamlit app now supports uploading a local quiz file (CSV, JSON, or JSONL) via the sidebar: use the `Upload quiz CSV/JSONL` control and click `Load uploaded quiz file` to import questions into the UI.
+- CSV files should include a `choices` column (a JSON-like list or a delimited string) or per-choice columns (`choice_a`, `choice_b`, ...). JSON/JSONL should contain objects with `question`, `choices`, `answer`, and optional `context` fields.
+
 ## Suggested dataset format for fine-tuning
 
 - `context`: the study passage or reviewer note
