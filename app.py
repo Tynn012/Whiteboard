@@ -240,7 +240,7 @@ col_main, col_info = st.columns([1.12, 0.88], gap="large")
 
 with col_main:
     st.markdown('<div class="panel"><h3>Load Quiz</h3></div>', unsafe_allow_html=True)
-    st.markdown('<div class="small-note">Pick a subject subset, then load a quiz. The app uses the validation split automatically so the interface stays simple.</div>', unsafe_allow_html=True)
+    st.markdown('<div style="padding-bottom: 1rem;" class="small-note">Pick a subject subset, then load a quiz. The app uses the validation split automatically so the interface stays simple.</div>', unsafe_allow_html=True)
     
     load_col_1, load_col_2 = st.columns([0.55, 0.45])
     with load_col_1:
