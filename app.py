@@ -78,259 +78,91 @@ st.set_page_config(
 )
 
 st.markdown(
-"""
+    """
 <style>
-:root {
-    --bg: #f6f7fb;
-    --card: #ffffff;
-    --text: #0f172a;
-    --muted: #64748b;
-    --border: #e5e7eb;
-    --primary: #111827;
-    --accent: #4f46e5;
-    --correct: #16a34a;
-    --wrong: #dc2626;
-}
-
-/* GLOBAL */
 html, body, [class*='css'] {
-    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-    background: var(--bg);
-    color: var(--text);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #f5f7fb;
+    color: #111827;
 }
 
 .stApp {
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    color: #111827;
 }
 
-/* LAYOUT */
-.block-container {
-    padding: 1.5rem 1rem 2rem;
-    max-width: 1250px;
-}
+.block-container { padding-top: 1.25rem; padding-bottom: 1.6rem; max-width: 1320px; }
 
-/* HERO */
-.hero {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 1.5rem 1.5rem;
-    margin-bottom: 1.25rem;
-    box-shadow: 0 12px 35px rgba(15, 23, 42, 0.06);
-}
+.hero { padding: 1.2rem 1.25rem; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 18px; margin-bottom: 1rem; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); }
+.hero h1 { font-size: 1.9rem; margin: 0; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+.hero p { margin: 6px 0 0 0; color: #334155; font-size: 0.98rem; line-height: 1.5; }
 
-.hero h1 {
-    font-size: 2rem;
-    margin: 0;
-    font-weight: 850;
-    letter-spacing: -0.03em;
-}
+.badge-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.85rem; }
+.badge { font-size:0.8rem; color:#0f172a; background:#eef2ff; border:1px solid #c7d2fe; padding:0.35rem 0.7rem; border-radius:999px; font-weight:700; }
 
-.hero p {
-    margin-top: 0.4rem;
-    color: var(--muted);
-    font-size: 0.98rem;
-}
+.panel { background: #ffffff; border: 1px solid #e5e7eb; border-radius:16px; padding:1rem; margin-bottom:1rem; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
+.panel h3 { margin:0; font-size:1.05rem; font-weight:800; color:#0f172a; }
 
-/* BADGES */
-.badge-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 1rem;
-}
+.question-card { padding:1rem 1.05rem; border-radius:16px; background:#ffffff; border:1px solid #dbe2ea; margin-bottom:1rem; box-shadow: 0 8px 20px rgba(2, 6, 23, 0.04); }
+.question-topline { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:0.75rem; }
+.question-title { font-weight:800; margin:0; font-size:1rem; color:#0f172a; }
+.question-badge { display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.65rem; border-radius:999px; background:#111827; color:#fff; font-size:0.8rem; font-weight:700; letter-spacing:0.02em; }
+.question-meta { color:#111827; font-size:1rem; line-height:1.55; font-weight:600; }
+.question-subtext { color:#475569; font-size:0.92rem; margin-top:0.35rem; }
+.small-note { color:#334155; font-size:0.94rem; line-height:1.6; }
 
-.badge {
-    font-size: 0.78rem;
-    background: #eef2ff;
-    border: 1px solid #dbeafe;
-    color: #1e293b;
-    padding: 0.35rem 0.65rem;
-    border-radius: 999px;
-    font-weight: 700;
-}
+/* New: card-style choices */
+.choice-card { margin:10px 0; padding:12px 12px; border-radius:14px; background:#ffffff; border:1px solid #dbe2ea; display:flex; align-items:flex-start; gap:12px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); }
+.choice-label { min-width:42px; height:42px; border-radius:12px; background:#0f172a; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:0.95rem; box-shadow: inset 0 -1px 0 rgba(255,255,255,0.08); }
+.choice-text { color:#0f172a; flex:1; font-size:0.98rem; line-height:1.5; font-weight:600; }
+.choice-selected { border:2px solid #16a34a; }
 
-/* PANELS */
-.panel {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1rem 1.2rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
-}
+.correct { color: #15803d; font-weight:800; }
+.incorrect { color: #b42318; font-weight:800; }
+.muted-pill { display:inline-flex; align-items:center; padding:0.22rem 0.55rem; border-radius:999px; font-size:0.78rem; font-weight:700; background:#eef2f7; color:#334155; border:1px solid #d7dee8; }
+.answer-state { margin-top:0.9rem; font-size:0.92rem; color:#334155; }
 
-.panel h3 {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 800;
-}
+/* Reduce visual clutter on widgets */
+.stButton>button, .stSelectbox>div, .stTextInput>div { border-radius:10px; }
+/* Make primary buttons black with white text for high contrast */
+.stButton>button { background:#111827; color:#ffffff; border:1px solid #111827; font-weight:700; box-shadow: 0 6px 16px rgba(17, 24, 39, 0.18); }
+.stButton>button:hover { background:#0b1220; border-color:#0b1220; }
+.stSelectbox>div, .stTextInput>div { background:#ffffff; border:1px solid #cbd5e1; }
+.stRadio>div[role="radiogroup"] > label > div { padding: 0.7rem 0.8rem; border-radius:12px; background:#fff; border:1px solid #dbe2ea; margin-bottom:0.5rem; font-weight:600; color:#111827 !important; }
+/* Ensure native radio inputs are visible across themes */
+.stRadio input[type="radio"] { display:inline-block !important; opacity:1 !important; width:20px; height:20px; margin-right:10px; vertical-align:middle; accent-color:#111827; }
 
-/* QUESTION CARD */
-.question-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 1.1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 10px 25px rgba(2, 6, 23, 0.05);
-}
+/* Streamlit form labels and markdown readability */
+.stMarkdown, .stText, .stSelectbox, .stRadio, .stSlider, .stCheckbox { color:#111827 !important; }
 
-.question-topline {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
-}
+/* Result area */
+.result-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:0.75rem; margin:0.75rem 0 1rem 0; }
+.result-tile { background:#fff; border:1px solid #dbe2ea; border-radius:16px; padding:0.85rem 1rem; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04); }
+.result-tile .label { font-size:0.8rem; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+.result-tile .value { font-size:1.45rem; color:#0f172a; font-weight:800; margin-top:0.15rem; }
 
-.question-badge {
-    background: #0f172a;
-    color: white;
-    font-size: 0.75rem;
-    padding: 0.3rem 0.65rem;
-    border-radius: 999px;
-    font-weight: 700;
-}
-
-.question-meta {
-    font-size: 1rem;
-    font-weight: 650;
-    color: var(--text);
-    line-height: 1.55;
-}
-
-.question-subtext {
-    font-size: 0.9rem;
-    color: var(--muted);
-    margin-top: 0.4rem;
-}
-
-/* CHOICES */
-.choice-card {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    padding: 12px;
-    margin-top: 10px;
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    background: #fff;
-    transition: all 0.15s ease-in-out;
-}
-
-.choice-card:hover {
-    transform: translateY(-1px);
-    border-color: #c7d2fe;
-    box-shadow: 0 8px 18px rgba(79, 70, 229, 0.08);
-}
-
-.choice-label {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    background: #111827;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-}
-
-.choice-text {
-    font-size: 0.97rem;
-    line-height: 1.5;
-    color: var(--text);
-    font-weight: 600;
-}
-
-/* RESULT GRID */
-.result-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.8rem;
-    margin: 1rem 0;
-}
-
-.result-tile {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 0.9rem 1rem;
-    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
-}
-
-.result-tile .label {
-    font-size: 0.75rem;
-    color: var(--muted);
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.result-tile .value {
-    font-size: 1.5rem;
-    font-weight: 850;
-}
-
-/* BUTTONS */
-.stButton>button {
-    background: var(--primary);
-    color: white;
-    border-radius: 12px;
-    padding: 0.6rem 1rem;
-    font-weight: 700;
-    border: none;
-    box-shadow: 0 10px 20px rgba(17, 24, 39, 0.2);
-}
-
-.stButton>button:hover {
-    background: #0b1220;
-}
-
-/* RADIO */
-.stRadio > div {
-    gap: 0.5rem;
-}
-
-.stRadio label {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 0.6rem 0.75rem;
-    font-weight: 600;
-}
-
-/* MOBILE */
 @media (max-width: 900px) {
-    .result-grid {
-        grid-template-columns: 1fr;
-    }
+    .result-grid { grid-template-columns: 1fr; }
+    .question-topline { flex-direction:column; align-items:flex-start; }
 }
 </style>
 """,
-unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
-
+# Ensure radio and choice text is always readable (override selection/contrast issues)
 st.markdown(
-"""
-<style>
-.question-meta, .question-card, .stRadio, .stMarkdown {
-    color: #0f172a !important;
-}
-
-/* Improve readability of selected radio */
-.stRadio input[type="radio"] {
-    accent-color: #111827;
-    transform: scale(1.1);
-}
-
-/* Remove ugly default spacing */
-.stMarkdown p {
-    margin-bottom: 0.4rem;
-}
-</style>
-""",
-unsafe_allow_html=True
+    """
+    <style>
+    /* Force choice text to dark color and prevent text-selection highlight hiding text */
+    .stRadio div[role="radiogroup"] > label > div, .question-card, .question-meta {
+        color: #000 !important;
+        user-select: none;
+    }
+    /* Make expanded choice blocks explicit and readable */
+    .question-card div[style] { color: #111 !important; }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 st.markdown(
