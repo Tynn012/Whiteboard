@@ -1,3 +1,11 @@
+datasets>=2.14.0
 streamlit>=1.33
 datasets>=2.14.0
 pandas>=2.0.0
+# Optional ML inference/training dependencies (required for LLM mode)
+transformers>=4.41.0
+torch>=2.0.0
+accelerate>=0.20.0
+bitsandbytes>=0.39.0; platform_machine!='aarch64'
+huggingface_hub>=0.16.4
+sentencepiece>=0.2.0

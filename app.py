@@ -50,6 +50,9 @@ html, body, [class*='css'] {
 
 /* Reduce visual clutter on widgets */
 .stButton>button, .stSelectbox>div, .stTextInput>div { border-radius:6px; }
+/* Make primary buttons black with white text for high contrast */
+.stButton>button { background:#000000; color:#ffffff; border:none; }
+.stRadio>div[role="radiogroup"] > label > div { padding: 0.45rem 0.6rem; border-radius:6px; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -90,6 +93,11 @@ with st.sidebar:
     quiz_split = st.selectbox("Dataset split", options=["train", "validation"], index=0)
     category_filter = st.text_input("Filter by category (optional)", placeholder="e.g., history, science, geography...")
     randomize_questions = st.checkbox("Randomize question order", value=True)
+    distractor_difficulty = st.slider("Distractor difficulty", min_value=0.0, max_value=1.0, value=0.7, step=0.1, help="Higher = harder distractors")
+    use_llm = st.checkbox("Use LLM for question generation (heavy)", value=False)
+    model_name_input = st.text_input("LLM model name", value="meta-llama/Meta-Llama-3-8B-Instruct")
+    hf_token = st.text_input("Hugging Face token (optional)", type="password")
+    llm_qpp = st.slider("LLM questions per passage", min_value=1, max_value=3, value=1)
 
 col_main, col_info = st.columns([1.12, 0.88], gap="large")
 
@@ -116,10 +124,15 @@ with col_main:
         with st.spinner("Loading board exam questions from SQuAD v2 dataset..."):
             try:
                 quiz_items = load_clapnq_sample(
-                    split=quiz_split, 
+                    split=quiz_split,
                     max_items=num_questions,
                     category=category_filter if category_filter else None,
-                    randomize=randomize_questions
+                    randomize=randomize_questions,
+                    distractor_difficulty=float(distractor_difficulty),
+                    use_llm=bool(use_llm),
+                    model_name=model_name_input if model_name_input else None,
+                    hf_token=hf_token if hf_token else None,
+                    llm_questions_per_passage=int(llm_qpp),
                 )
                 st.session_state.quiz_items = quiz_items
                 st.session_state.graded = False
@@ -173,7 +186,8 @@ if st.session_state.quiz_items:
                 """,
                 unsafe_allow_html=True,
             )
-            st.selectbox(
+            # show choices as radio buttons for better visibility
+            st.radio(
                 f"Answer for question {index + 1}",
                 options=["Select an answer"] + list(item.choices),
                 key=f"choice_{index}",

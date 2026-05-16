@@ -5,6 +5,16 @@ import re
 from dataclasses import dataclass
 from typing import Sequence
 
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    import torch
+    _HAS_TRANSFORMERS = True
+except Exception:
+    _HAS_TRANSFORMERS = False
+
+# Default LLM model for optional generation mode
+DEFAULT_MODEL_NAME = "meta-llama/Meta-Llama-3-8B-Instruct"
+
 
 @dataclass(frozen=True)
 class QuizQuestion:
@@ -22,7 +32,7 @@ class QuizQuestion:
         }
 
 
-def build_choices(answer: str, answer_pool: Sequence[str], context: str, num_choices: int = 4) -> list[str]:
+def build_choices(answer: str, answer_pool: Sequence[str], context: str, num_choices: int = 4, difficulty: float = 0.7) -> list[str]:
     """Build multiple choice options with challenging distractors.
     
     Prioritizes entity-based distractors from context that are more plausible wrong answers.
@@ -68,7 +78,10 @@ def build_choices(answer: str, answer_pool: Sequence[str], context: str, num_cho
         def _is_numeric(s: str) -> bool:
             return bool(re.fullmatch(r"[\d\.,%]+", s))
         type_bonus = 0.2 if _is_numeric(cand) == _is_numeric(answer) else 0.0
-        return len_score * 0.5 + token_score * 0.5 + type_bonus
+        base = len_score * 0.5 + token_score * 0.5 + type_bonus
+        # difficulty scales preference for high-base scores; lower difficulty adds randomness
+        noise = random.random() * (1.0 - difficulty) * 0.5
+        return base * difficulty + noise
 
     scored = [(c, _score_candidate(c)) for c in cleaned]
     scored.sort(key=lambda x: x[1], reverse=True)
@@ -82,11 +95,17 @@ def build_choices(answer: str, answer_pool: Sequence[str], context: str, num_cho
     # Fill remaining slots with context-aware fallbacks or generic fallbacks
     fallback_pool = _get_context_fallbacks(context) + _fallback_distractors()
     fi = 0
+    # allow more fallback usage when difficulty is low
+    max_fallbacks = max(0, int((1.0 - difficulty) * (num_choices - 1)))
+    fallbacks_used = 0
     while len(distractors) < num_choices - 1 and fi < len(fallback_pool):
         filler = fallback_pool[fi]
         fi += 1
         if filler.lower() != answer_lower and filler not in distractors:
-            distractors.append(filler)
+            # only accept fallback if difficulty allows or if we lack any distractors
+            if difficulty < 0.85 or not distractors or fallbacks_used < max_fallbacks:
+                distractors.append(filler)
+                fallbacks_used += 1
 
     choices = [answer] + distractors[: num_choices - 1]
     random.shuffle(choices)
@@ -122,6 +141,75 @@ def _sample_answers(text: str, limit: int) -> list[str]:
             if len(candidates) >= limit:
                 return candidates
     return candidates
+
+
+class ModelBackend:
+    """Light wrapper to load an instruction-tuned causal LLM and generate questions.
+
+    This attempts to load the model with 8-bit (bitsandbytes) if available and falls back
+    to a CPU/FP32 load if not.
+    """
+    def __init__(self, model_name: str = DEFAULT_MODEL_NAME, hf_token: str | None = None):
+        if not _HAS_TRANSFORMERS:
+            raise RuntimeError("transformers/torch not available in the environment")
+        self.model_name = model_name
+        self.hf_token = hf_token
+        self.tokenizer = None
+        self.model = None
+        self._load_backend()
+
+    def _load_backend(self):
+        kwargs = {}
+        if self.hf_token:
+            kwargs['use_auth_token'] = self.hf_token
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, **kwargs)
+
+        # Prefer 8-bit load if bitsandbytes is available
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                device_map='auto',
+                load_in_8bit=True,
+                torch_dtype=torch.float16,
+                **kwargs,
+            )
+        except Exception:
+            # fallback: normal load (may be large and require GPU/CPU memory)
+            self.model = AutoModelForCausalLM.from_pretrained(self.model_name, **kwargs)
+
+        self.model.eval()
+
+    def generate(self, passages: Sequence[str], answers: Sequence[str], num_questions_per_passage: int = 1, max_new_tokens: int = 64, temperature: float = 0.0) -> list[dict]:
+        if not passages:
+            return []
+
+        results: list[dict] = []
+        for idx, passage in enumerate(passages):
+            answer = answers[idx] if idx < len(answers) else ""
+            for _ in range(num_questions_per_passage):
+                prompt = (
+                    f"Generate a concise, exam-style question whose answer is '{answer}'.\nContext: {passage}\nQuestion:"
+                )
+                tokenized = self.tokenizer(prompt, return_tensors='pt', truncation=True).to(self.model.device)
+                gen = self.model.generate(
+                    **tokenized,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    do_sample=False,
+                    num_return_sequences=1,
+                )
+                q = self.tokenizer.decode(gen[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
+                # heuristic: take text after 'Question:' if present
+                if 'Question:' in q:
+                    q = q.split('Question:')[-1].strip()
+                results.append({
+                    'context_id': f'passage-{idx+1}',
+                    'context': passage,
+                    'question': q,
+                    'answer': answer,
+                })
+        return results
 
 
 def _extract_context_entities(context: str, limit: int = 10) -> list[str]:
@@ -189,11 +277,11 @@ def _get_context_fallbacks(context: str) -> list[str]:
 
 def _fallback_distractors() -> list[str]:
     return [
-        "All of the above",
-        "None of the above",
         "Insufficient information",
-        "The main concept",
-        "A supporting detail",
+        "A related option",
+        "A plausible alternative",
+        "A similar concept",
+        "A contextually relevant choice",
     ]
 
 
@@ -214,7 +302,17 @@ def quiz_to_json(items: Sequence[QuizQuestion]) -> list[dict]:
     return [item.to_dict() for item in items]
 
 
-def load_clapnq_sample(split: str = "train", max_items: int = 6, category: str | None = None, randomize: bool = True) -> list[QuizQuestion]:
+def load_clapnq_sample(
+    split: str = "train",
+    max_items: int = 6,
+    category: str | None = None,
+    randomize: bool = True,
+    distractor_difficulty: float = 0.7,
+    use_llm: bool = False,
+    model_name: str = DEFAULT_MODEL_NAME,
+    hf_token: str | None = None,
+    llm_questions_per_passage: int = 1,
+) -> list[QuizQuestion]:
     """Load sample questions from SQuAD v2 dataset for board-exam style review.
     
     Args:
@@ -295,6 +393,27 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6, category: str |
             except Exception as item_err:
                 continue
         
+        # If using an LLM backend, generate questions from passages/answers
+        if use_llm:
+            if not _HAS_TRANSFORMERS:
+                raise RuntimeError("transformers/torch are required for LLM generation mode")
+            # Prepare inputs
+            passages = [c.context for c in candidates]
+            answers = [c.answer for c in candidates]
+            backend = ModelBackend(model_name=model_name, hf_token=hf_token)
+            raw_items = backend.generate(passages[: max_items], answers[: max_items], num_questions_per_passage=llm_questions_per_passage)
+            # Build quiz items from generated content
+            quiz_items = []
+            for itm in raw_items[:max_items]:
+                q = normalize_whitespace(str(itm.get('question', '')))
+                a = normalize_whitespace(str(itm.get('answer', '')))
+                ctx = normalize_whitespace(str(itm.get('context', '')))
+                if not q or not a:
+                    continue
+                choices = build_choices(a, [x.answer for x in candidates], ctx, difficulty=distractor_difficulty)
+                quiz_items.append(QuizQuestion(question=q, answer=a, context=ctx, choices=tuple(choices)))
+            return quiz_items
+
         # If requested, randomize candidate order before selecting final set
         if randomize:
             random.shuffle(candidates)
@@ -305,7 +424,7 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6, category: str |
         # Select up to max_items from candidates and build choices using broader pool
         quiz_items = []
         for c in candidates[: max_items]:
-            choices = build_choices(c.answer, answer_pool, c.context)
+            choices = build_choices(c.answer, answer_pool, c.context, difficulty=distractor_difficulty)
             quiz_items.append(
                 QuizQuestion(
                     question=c.question,
