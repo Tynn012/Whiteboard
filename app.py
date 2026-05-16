@@ -58,6 +58,21 @@ html, body, [class*='css'] {
 """,
     unsafe_allow_html=True,
 )
+# Ensure radio and choice text is always readable (override selection/contrast issues)
+st.markdown(
+    """
+    <style>
+    /* Force choice text to dark color and prevent text-selection highlight hiding text */
+    .stRadio div[role="radiogroup"] > label > div, .question-card, .question-meta {
+        color: #000 !important;
+        user-select: none;
+    }
+    /* Make expanded choice blocks explicit and readable */
+    .question-card div[style] { color: #111 !important; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """

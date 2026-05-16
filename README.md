@@ -194,6 +194,12 @@ streamlit run app.py
 
 If you want, I will finish this `How this app was built` section by adding small code snippets for the exact functions we edited (for example, the final `build_choices` implementation) and I can open a pull request with those snippets included as separate helper files.
 
+UI notes
+
+- The app includes a sidebar checkbox: **Show expanded choices under each question**. Enabling this renders A/B/C/D style choice blocks under each question for improved readability.
+- After grading, the correct answer is shown with a high-contrast badge so it's immediately visible.
+- If you ever see choice text hard to read (browser selection or theme interaction), toggle the expanded choices option — those blocks force readable colors.
+
 ## Turnover checklist (readying for your friend)
 
 - **Code:** `app.py`, `quiz_engine.py`, `notebooks/*` are present and functional for dataset-only mode (SQuAD v2).
