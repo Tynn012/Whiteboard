@@ -103,11 +103,11 @@ if "total" not in st.session_state:
 
 with st.sidebar:
     st.markdown("## Quiz settings")
-    num_questions = st.slider("Number of questions", min_value=3, max_value=20, value=6)
-    quiz_split = st.selectbox("Dataset split", options=["train", "validation"], index=0)
+    num_questions = st.slider("Number of questions", min_value=1, max_value=50, value=6)
+    quiz_split = st.selectbox("Dataset split", options=["validation", "train"], index=0)
+    mmlu_config = st.text_input("MMLU config", value="all", help="Dataset config name (e.g., 'all' or 'machine_learning')")
     category_filter = st.text_input("Filter by category (optional)", placeholder="e.g., history, science, geography...")
     randomize_questions = st.checkbox("Randomize question order", value=True)
-    distractor_difficulty = st.slider("Distractor difficulty", min_value=0.0, max_value=1.0, value=0.7, step=0.1, help="Higher = harder distractors")
     show_expanded_choices = st.checkbox("Show expanded choices under each question", value=False)
 
 col_main, col_info = st.columns([1.12, 0.88], gap="large")
@@ -117,8 +117,7 @@ with col_main:
     
     load_col_1, load_col_2 = st.columns([0.55, 0.45])
     with load_col_1:
-        load_clicked = st.button("Load SQuAD v2 questions", use_container_width=True, type="primary")
-        load_mmlu_clicked = st.button("Load MMLU questions (4-choice)", use_container_width=True)
+        load_mmlu_clicked = st.button("Load MMLU questions (4-choice)", use_container_width=True, type="primary")
     with load_col_2:
         clear_clicked = st.button("Clear quiz", use_container_width=True)
 
@@ -132,39 +131,15 @@ with col_main:
                 del st.session_state[key]
         st.rerun()
 
-    if load_clicked:
-        with st.spinner("Loading board exam questions from SQuAD v2 dataset..."):
-            try:
-                quiz_items = load_clapnq_sample(
-                    split=quiz_split,
-                    max_items=num_questions,
-                    category=category_filter if category_filter else None,
-                    randomize=randomize_questions,
-                    distractor_difficulty=float(distractor_difficulty),
-                )
-                st.session_state.quiz_items = quiz_items
-                st.session_state.graded = False
-                st.session_state.score = 0
-                st.session_state.total = len(quiz_items)
-                for key in list(st.session_state.keys()):
-                    if key.startswith("choice_"):
-                        del st.session_state[key]
-                if not quiz_items:
-                    st.warning("Could not load quiz items from the dataset. Please try again or adjust your category filter.")
-                else:
-                    st.success(f"✅ Loaded {len(quiz_items)} questions from SQuAD v2 dataset.")
-            except Exception as exc:
-                st.error(f"❌ Dataset loading failed: {exc}")
-
     if load_mmlu_clicked:
         with st.spinner("Loading multiple-choice questions from CAIS MMLU dataset..."):
             try:
-                # MMLU already contains choices; we prefer the validation split by default
                 quiz_items = load_mmlu_sample(
                     split=quiz_split,
                     max_items=num_questions,
                     category=category_filter if category_filter else None,
                     randomize=randomize_questions,
+                    config=mmlu_config,
                 )
                 st.session_state.quiz_items = quiz_items
                 st.session_state.graded = False
@@ -174,9 +149,9 @@ with col_main:
                     if key.startswith("choice_"):
                         del st.session_state[key]
                 if not quiz_items:
-                    st.warning("Could not load MMLU quiz items. The dataset schema may differ or the split may be unavailable.")
+                    st.warning("Could not load MMLU quiz items. The dataset config may be incorrect or the split may be unavailable.")
                 else:
-                    st.success(f"✅ Loaded {len(quiz_items)} questions from CAIS MMLU dataset.")
+                    st.success(f"✅ Loaded {len(quiz_items)} questions from CAIS MMLU dataset (config={mmlu_config}).")
             except Exception as exc:
                 st.error(f"❌ MMLU dataset loading failed: {exc}")
 
@@ -195,8 +170,8 @@ with col_info:
     st.markdown(
         """
         <div class="small-note">
-        1. <strong>Configure settings:</strong> Adjust number of questions, pick a split, optionally filter by category, and choose if you want randomization.
-        2. <strong>Load questions:</strong> Click "Load SQuAD v2 questions" to generate distractors from context, or "Load MMLU questions" to load 4-choice MCQs directly.
+        1. <strong>Configure settings:</strong> Adjust number of questions, pick a split, set `MMLU config` (e.g., 'all' or a subject), and optionally filter by category.
+        2. <strong>Load questions:</strong> Click "Load MMLU questions (4-choice)" to fetch pre-built multiple-choice items.
         3. <strong>Answer:</strong> Select from multiple-choice options.
         4. <strong>Grade:</strong> Click "Grade my quiz" to see your score and review with explanations.
         </div>
@@ -287,4 +262,4 @@ if st.session_state.quiz_items:
                 unsafe_allow_html=True,
             )
 else:
-    st.info("Click 'Load SQuAD v2 questions' or 'Load MMLU questions (4-choice)' to start a quiz.")
+    st.info("Click 'Load MMLU questions (4-choice)' to start a quiz.")

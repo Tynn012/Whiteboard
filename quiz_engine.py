@@ -354,6 +354,7 @@ def load_mmlu_sample(
     max_items: int = 6,
     category: str | None = None,
     randomize: bool = True,
+    config: str | None = "all",
 ) -> list[QuizQuestion]:
     """Load multiple-choice questions from the CAIS MMLU dataset (pre-constructed choices).
 
@@ -364,7 +365,7 @@ def load_mmlu_sample(
     try:
         from datasets import load_dataset
 
-        ds = load_dataset("cais/mmlu", split=split)
+        ds = load_dataset("cais/mmlu", config_name=(config or "all"), split=split)
         items: list[QuizQuestion] = []
 
         # Helper to find choices and correct answer in a dataset item
