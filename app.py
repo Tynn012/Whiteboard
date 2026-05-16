@@ -122,6 +122,8 @@ html, body, [class*='css'] {
 /* Make primary buttons black with white text for high contrast */
 .stButton>button { background:#000000; color:#ffffff; border:none; }
 .stRadio>div[role="radiogroup"] > label > div { padding: 0.45rem 0.6rem; border-radius:6px; }
+/* Ensure native radio inputs are visible across themes */
+.stRadio input[type="radio"] { display:inline-block !important; opacity:1 !important; width:18px; height:18px; margin-right:8px; vertical-align:middle; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -172,13 +174,12 @@ if "total" not in st.session_state:
 with st.sidebar:
     st.markdown("## Quiz settings")
     num_questions = st.slider("Number of questions", min_value=1, max_value=50, value=6)
-    quiz_split = st.selectbox("Dataset split", options=["validation", "train"], index=0)
-    mmlu_config_select = st.selectbox("MMLU subset", options=MMLU_CONFIGS + ["Other (type...)"] , index=MMLU_CONFIGS.index("all"))
+    # Removed split and category filter to simplify the UI; we default to validation split
+    mmlu_config_select = st.selectbox("MMLU subset", options=MMLU_CONFIGS + ["Other (type...)"], index=MMLU_CONFIGS.index("all"))
     if mmlu_config_select == "Other (type...)":
         mmlu_config = st.text_input("MMLU config (custom)", value="all", help="Type a config name from the dataset list")
     else:
         mmlu_config = mmlu_config_select
-    category_filter = st.text_input("Filter by category (optional)", placeholder="e.g., history, science, geography...")
     randomize_questions = st.checkbox("Randomize question order", value=True)
     show_expanded_choices = st.checkbox("Show expanded choices under each question", value=False)
 
@@ -206,10 +207,10 @@ with col_main:
     if load_mmlu_clicked:
         with st.spinner("Loading multiple-choice questions from CAIS MMLU dataset..."):
             try:
+                # Fixed: always load validation split for simplicity
                 quiz_items = load_mmlu_sample(
-                    split=quiz_split,
+                    split="validation",
                     max_items=num_questions,
-                    category=category_filter if category_filter else None,
                     randomize=randomize_questions,
                     config=mmlu_config,
                 )
@@ -242,8 +243,8 @@ with col_info:
     st.markdown(
         """
         <div class="small-note">
-        1. <strong>Configure settings:</strong> Adjust number of questions, pick a split, set `MMLU config` (e.g., 'all' or a subject), and optionally filter by category.
-        2. <strong>Dataset split:</strong> Use `validation` to sample held-out items suitable for practice/evaluation; `train` contains training items. For most use-cases pick `validation`.
+        1. <strong>Configure settings:</strong> Adjust number of questions and choose an `MMLU config` (e.g., 'all' or a subject).
+        2. <strong>Note:</strong> This app loads the held-out `validation` split by default for safe practice.
         3. <strong>Load questions:</strong> Click "Load MMLU questions (4-choice)" to fetch pre-built multiple-choice items.
         4. <strong>Answer:</strong> Select from multiple-choice options.
         5. <strong>Grade:</strong> Click "Grade my quiz" to see your score and review with explanations.
@@ -307,44 +308,44 @@ if st.session_state.quiz_items:
                     correct += 1
                 results.append((item, selected_text, is_correct, is_answered))
 
-        st.session_state.graded = True
-        st.session_state.score = correct
-        st.session_state.total = len(st.session_state.quiz_items)
+            st.session_state.graded = True
+            st.session_state.score = correct
+            st.session_state.total = len(st.session_state.quiz_items)
 
-        score_col_1, score_col_2, score_col_3 = st.columns(3)
-        score_col_1.metric("Correct", correct)
-        score_col_2.metric("Answered", answered)
-        score_col_3.metric("Score", f"{correct}/{len(st.session_state.quiz_items)}")
+            score_col_1, score_col_2, score_col_3 = st.columns(3)
+            score_col_1.metric("Correct", correct)
+            score_col_2.metric("Answered", answered)
+            score_col_3.metric("Score", f"{correct}/{len(st.session_state.quiz_items)}")
 
-        for index, (item, selected, is_correct, is_answered) in enumerate(results):
-            state_label = "✓ Correct" if is_correct else "✗ Incorrect"
-            state_class = "correct" if is_correct else "incorrect"
-            # Build choices display with highlight for correct answer
-            choice_rows = ""
-            labels = ["A", "B", "C", "D", "E"]
-            for i, ch in enumerate(item.choices):
-                prefix = labels[i] if i < len(labels) else str(i + 1)
-                # highlight the correct answer and indicate the user's selection
-                if ch == item.answer:
-                    # correct answer
-                    choice_rows += f"<div class='choice-card' style='background:#000;color:#fff;'><div class='choice-label'>{prefix}</div><div class='choice-text'>{ch}</div></div>"
-                elif ch == selected:
-                    # user's (incorrect) selection
-                    choice_rows += f"<div class='choice-card' style='border:2px solid #b42318;background:#fff0f0;'><div class='choice-label' style='background:#b42318;'>?</div><div class='choice-text'>{ch}</div></div>"
-                else:
-                    choice_rows += f"<div class='choice-card'><div class='choice-label' style='background:#777;'> </div><div class='choice-text'>{ch}</div></div>"
+            for index, (item, selected, is_correct, is_answered) in enumerate(results):
+                state_label = "✓ Correct" if is_correct else "✗ Incorrect"
+                state_class = "correct" if is_correct else "incorrect"
+                # Build choices display with highlight for correct answer
+                choice_rows = ""
+                labels = ["A", "B", "C", "D", "E"]
+                for i, ch in enumerate(item.choices):
+                    prefix = labels[i] if i < len(labels) else str(i + 1)
+                    # highlight the correct answer and indicate the user's selection
+                    if ch == item.answer:
+                        # correct answer
+                        choice_rows += f"<div class='choice-card' style='background:#000;color:#fff;'><div class='choice-label'>{prefix}</div><div class='choice-text'>{ch}</div></div>"
+                    elif ch == selected:
+                        # user's (incorrect) selection
+                        choice_rows += f"<div class='choice-card' style='border:2px solid #b42318;background:#fff0f0;'><div class='choice-label' style='background:#b42318;'>?</div><div class='choice-text'>{ch}</div></div>"
+                    else:
+                        choice_rows += f"<div class='choice-card'><div class='choice-label' style='background:#777;'> </div><div class='choice-text'>{ch}</div></div>"
 
-            st.markdown(
-                f"""
-                <div class="question-card">
-                    <div class="question-title">Question {index + 1} - <span class="{state_class}">{state_label}</span></div>
-                    <div class="question-meta">{item.question}</div>
-                    <div style="margin-top:8px;">{choice_rows}</div>
-                    <div style="margin-top:8px;">Your answer: <strong>{selected if is_answered else 'Not answered'}</strong></div>
-                    <div style="margin-top:8px; color:#666;">Context: {item.context}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                st.markdown(
+                    f"""
+                    <div class="question-card">
+                        <div class="question-title">Question {index + 1} - <span class="{state_class}">{state_label}</span></div>
+                        <div class="question-meta">{item.question}</div>
+                        <div style="margin-top:8px;">{choice_rows}</div>
+                        <div style="margin-top:8px;">Your answer: <strong>{selected if is_answered else 'Not answered'}</strong></div>
+                        <div style="margin-top:8px; color:#666;">Context: {item.context}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 else:
     st.info("Click 'Load MMLU questions (4-choice)' to start a quiz.")
