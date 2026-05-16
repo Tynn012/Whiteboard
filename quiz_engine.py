@@ -304,7 +304,7 @@ def quiz_to_json(items: Sequence[QuizQuestion]) -> list[dict]:
     return [item.to_dict() for item in items]
 
 
-def load_clapnq_sample(split: str = "train", max_items: int = 5) -> list[QuizQuestion]:
+def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQuestion]:
     """Load sample questions from the PrimeQA CLAPNQ dataset for board-exam style review.
     
     Args:
@@ -317,41 +317,61 @@ def load_clapnq_sample(split: str = "train", max_items: int = 5) -> list[QuizQue
     try:
         from datasets import load_dataset
         
-        dataset = load_dataset("PrimeQA/clapnq", split=split)
+        dataset = load_dataset("PrimeQA/clapnq", split=split, streaming=False)
         quiz_items: list[QuizQuestion] = []
         seen_questions: set[str] = set()
         
         for idx in range(min(max_items, len(dataset))):
-            item = dataset[idx]
-            question = normalize_whitespace(str(item.get("question", "")))
-            context = normalize_whitespace(str(item.get("contexts", [""])[0] if isinstance(item.get("contexts"), list) else item.get("contexts", "")))
-            
-            if not question or not context:
-                continue
+            try:
+                item = dataset[idx]
                 
-            fingerprint = question.lower()
-            if fingerprint in seen_questions:
-                continue
-            seen_questions.add(fingerprint)
-            
-            # Extract a likely answer span from the context for multiple choice
-            answer = normalize_whitespace(str(item.get("long_answer", "")))
-            if not answer:
-                answer = _sample_answers(context, 1)[0] if _sample_answers(context, 1) else "Not provided"
-            
-            choices = build_choices(answer, [answer], context)
-            
-            quiz_items.append(
-                QuizQuestion(
-                    question=question,
-                    answer=answer,
-                    context=context,
-                    choices=tuple(choices),
+                # CLAPNQ schema: question, contexts (list), long_answer
+                question = normalize_whitespace(str(item.get("question", "")))
+                
+                # Handle contexts as list
+                contexts = item.get("contexts", [])
+                if isinstance(contexts, list) and contexts:
+                    context = normalize_whitespace(str(contexts[0]))
+                else:
+                    context = normalize_whitespace(str(contexts)) if contexts else ""
+                
+                if not question or not context:
+                    continue
+                    
+                fingerprint = question.lower()
+                if fingerprint in seen_questions:
+                    continue
+                seen_questions.add(fingerprint)
+                
+                # Use long_answer as the source answer
+                long_answer = item.get("long_answer", "")
+                answer = normalize_whitespace(str(long_answer)) if long_answer else ""
+                
+                # Fallback: sample from context if no long_answer
+                if not answer:
+                    sampled = _sample_answers(context, 1)
+                    answer = sampled[0] if sampled else "Cannot determine"
+                
+                # Truncate answer if too long
+                if len(answer) > 200:
+                    answer = answer[:197] + "..."
+                
+                choices = build_choices(answer, [answer], context)
+                
+                quiz_items.append(
+                    QuizQuestion(
+                        question=question,
+                        answer=answer,
+                        context=context,
+                        choices=tuple(choices),
+                    )
                 )
-            )
-            
-            if len(quiz_items) >= max_items:
-                break
+                
+                if len(quiz_items) >= max_items:
+                    break
+                    
+            except Exception as item_err:
+                continue
         
         return quiz_items
         

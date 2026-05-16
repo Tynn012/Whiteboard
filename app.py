@@ -4,7 +4,7 @@ import json
 
 import streamlit as st
 
-from quiz_engine import DEFAULT_MODEL_NAME, generate_quiz, quiz_to_json, load_clapnq_sample
+from quiz_engine import load_clapnq_sample, quiz_to_json
 
 
 st.set_page_config(
@@ -153,13 +153,13 @@ st.markdown(
 <div class="hero">
     <h1>Board Exam Quiz Forge</h1>
     <p>
-        Paste your reviewer notes, let PrimeQA generate practice questions, and turn one long study block into a scored quiz.
-        The app prefers the PrimeQA passage question-generation pipeline and falls back to the same Hugging Face checkpoint when needed.
+        Powered by PrimeQA's CLAPNQ dataset: Comprehensive Long-form Answers from Passages. 
+        Load pre-curated board-exam style questions and test your knowledge with instant grading.
     </p>
     <div class="badge-row">
-        <span class="badge">PrimeQA / mT5 reviewer</span>
-        <span class="badge">Board-exam quiz mode</span>
-        <span class="badge">Offline-friendly fallback</span>
+        <span class="badge">CLAPNQ Dataset</span>
+        <span class="badge">Board-exam questions</span>
+        <span class="badge">Instant grading</span>
     </div>
 </div>
 """,
@@ -177,53 +177,19 @@ if "total" not in st.session_state:
 
 with st.sidebar:
     st.markdown("## Quiz settings")
-    model_name = st.text_input("Model checkpoint", value=DEFAULT_MODEL_NAME)
-    questions_per_chunk = st.slider("Questions per passage", min_value=1, max_value=4, value=2)
-    max_chunks = st.slider("Passage chunks to use", min_value=1, max_value=8, value=4)
-    num_beams = st.slider("Beam search width", min_value=2, max_value=6, value=4)
-    st.caption("PrimeQA's TyDi passage question generator works best with clean study notes and paragraph-sized chunks.")
+    num_questions = st.slider("Number of questions", min_value=3, max_value=20, value=6)
+    quiz_split = st.selectbox("Dataset split", options=["train", "validation"], index=0)
 
-col_left, col_right = st.columns([1.12, 0.88], gap="large")
+col_main, col_info = st.columns([1.12, 0.88], gap="large")
 
-with col_left:
-    st.markdown('<div class="panel"><h3>Study material</h3></div>', unsafe_allow_html=True)
+with col_main:
+    st.markdown('<div class="panel"><h3>Load Quiz</h3></div>', unsafe_allow_html=True)
     
-    input_mode = st.radio(
-        "Choose input source",
-        options=["Paste notes", "Upload file", "Load from CLAPNQ dataset"],
-        horizontal=True,
-        label_visibility="collapsed",
-    )
-    
-    uploaded = None
-    pasted_text = ""
-    dataset_loaded = False
-    input_text = ""
-    
-    if input_mode == "Upload file":
-        uploaded = st.file_uploader("Upload a .txt or .md file", type=["txt", "md"], label_visibility="collapsed")
-        if uploaded is not None:
-            uploaded_text = uploaded.read().decode("utf-8", errors="ignore")
-            if uploaded_text.strip():
-                input_text = uploaded_text.strip()
-    elif input_mode == "Paste notes":
-        pasted_text = st.text_area(
-            "Paste your board exam reviewer notes here",
-            height=360,
-            placeholder="Example: The Philippine Constitution establishes ...",
-            label_visibility="collapsed",
-        )
-        input_text = pasted_text.strip()
-    elif input_mode == "Load from CLAPNQ dataset":
-        st.info("💾 Loading sample questions from PrimeQA's CLAPNQ dataset...")
-        dataset_loaded = True
-        input_text = "__CLAPNQ_DATASET__"
-
-    action_col_1, action_col_2 = st.columns([0.55, 0.45])
-    with action_col_1:
-        generate_clicked = st.button("Generate quiz", use_container_width=True, type="primary")
-    with action_col_2:
-        clear_clicked = st.button("Clear", use_container_width=True)
+    load_col_1, load_col_2 = st.columns([0.55, 0.45])
+    with load_col_1:
+        load_clicked = st.button("Load from CLAPNQ", use_container_width=True, type="primary")
+    with load_col_2:
+        clear_clicked = st.button("Clear quiz", use_container_width=True)
 
     if clear_clicked:
         st.session_state.quiz_items = []
@@ -235,49 +201,23 @@ with col_left:
                 del st.session_state[key]
         st.rerun()
 
-    if generate_clicked:
-        if not input_text:
-            st.warning("Select an input source first.")
-        elif input_text == "__CLAPNQ_DATASET__":
-            with st.spinner("Loading sample questions from CLAPNQ dataset..."):
-                try:
-                    quiz_items = load_clapnq_sample(split="train", max_items=6)
-                    st.session_state.quiz_items = quiz_items
-                    st.session_state.graded = False
-                    st.session_state.score = 0
-                    st.session_state.total = len(quiz_items)
-                    for key in list(st.session_state.keys()):
-                        if key.startswith("choice_"):
-                            del st.session_state[key]
-                    if not quiz_items:
-                        st.warning("Could not load quiz items from the dataset. Try again or use manual input.")
-                    else:
-                        st.success(f"Loaded {len(quiz_items)} questions from CLAPNQ dataset.")
-                except Exception as exc:
-                    st.error(f"Dataset loading failed: {exc}")
-        else:
-            with st.spinner("Generating reviewer questions with PrimeQA..."):
-                try:
-                    quiz_items = generate_quiz(
-                        input_text,
-                        model_name=model_name,
-                        questions_per_chunk=questions_per_chunk,
-                        max_chunks=max_chunks,
-                        num_beams=num_beams,
-                    )
-                    st.session_state.quiz_items = quiz_items
-                    st.session_state.graded = False
-                    st.session_state.score = 0
-                    st.session_state.total = len(quiz_items)
-                    for key in list(st.session_state.keys()):
-                        if key.startswith("choice_"):
-                            del st.session_state[key]
-                    if not quiz_items:
-                        st.warning("The model did not produce quiz items from the current text. Try cleaner paragraphs or more detailed notes.")
-                    else:
-                        st.success(f"Generated {len(quiz_items)} quiz questions.")
-                except Exception as exc:
-                    st.error(f"Quiz generation failed: {exc}")
+    if load_clicked:
+        with st.spinner("Loading board exam questions from CLAPNQ dataset..."):
+            try:
+                quiz_items = load_clapnq_sample(split=quiz_split, max_items=num_questions)
+                st.session_state.quiz_items = quiz_items
+                st.session_state.graded = False
+                st.session_state.score = 0
+                st.session_state.total = len(quiz_items)
+                for key in list(st.session_state.keys()):
+                    if key.startswith("choice_"):
+                        del st.session_state[key]
+                if not quiz_items:
+                    st.warning("Could not load quiz items from the dataset. Please try again.")
+                else:
+                    st.success(f"✅ Loaded {len(quiz_items)} questions from CLAPNQ dataset.")
+            except Exception as exc:
+                st.error(f"❌ Dataset loading failed: {exc}")
 
     if st.session_state.quiz_items:
         export_payload = json.dumps(quiz_to_json(st.session_state.quiz_items), indent=2, ensure_ascii=False)
@@ -289,14 +229,15 @@ with col_left:
             use_container_width=True,
         )
 
-with col_right:
-    st.markdown('<div class="panel"><h3>Reviewer workflow</h3></div>', unsafe_allow_html=True)
+with col_info:
+    st.markdown('<div class="panel"><h3>How it works</h3></div>', unsafe_allow_html=True)
     st.markdown(
         """
         <div class="small-note">
-        1. Paste your reviewer notes or upload a text file.
-        2. PrimeQA samples answer spans from the passage and turns them into questions.
-        3. The app builds multiple-choice options, grades your responses, and shows the answer key.
+        1. Adjust the number of questions in the sidebar.
+        2. Click "Load from CLAPNQ" to fetch board-exam style questions.
+        3. Answer each question by selecting from the multiple-choice options.
+        4. Click "Grade my quiz" to see your score and review answers.
         </div>
         """,
         unsafe_allow_html=True,
@@ -312,7 +253,6 @@ if st.session_state.quiz_items:
                 <div class="question-card">
                     <div class="question-title">Question {index + 1}</div>
                     <div class="question-meta">{item.question}</div>
-                    <div class="question-meta"><strong>Source answer:</strong> {item.answer}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -350,7 +290,7 @@ if st.session_state.quiz_items:
         score_col_3.metric("Score", f"{correct}/{len(st.session_state.quiz_items)}")
 
         for index, (item, selected, is_correct, is_answered) in enumerate(results):
-            state_label = "Correct" if is_correct else "Incorrect"
+            state_label = "✓ Correct" if is_correct else "✗ Incorrect"
             state_class = "correct" if is_correct else "incorrect"
             st.markdown(
                 f"""
@@ -365,4 +305,4 @@ if st.session_state.quiz_items:
                 unsafe_allow_html=True,
             )
 else:
-    st.info("Add reviewer notes, generate the quiz, then answer the questions here.")
+    st.info("Click 'Load from CLAPNQ' to start a quiz.")
