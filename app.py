@@ -91,10 +91,6 @@ html, body, [class*='css'] {
     color: #FFFFFF !important;
 }
 
-.stApp:hover {
-    color: #111827;
-}
-
 .block-container { padding-top: 1.25rem; padding-bottom: 1.6rem; max-width: 1320px; }
 
 .hero { padding: 1.2rem 1.25rem; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 18px; margin-bottom: 1rem; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); }
