@@ -40,7 +40,7 @@ This project supports an optional LLM generation mode using instruction-tuned mo
 
 If you want to fine-tune a question-generation checkpoint on your own dataset (Kaggle or Colab), follow the step-by-step guide in:
 
-`notebooks/kaggle_primeqa_board_exam_finetune_cells.md`
+`notebooks/kaggle_SQuAD v2_board_exam_finetune_cells.md`
 
 This file contains a cell-by-cell Kaggle/Colab workflow for preparing data, training a Hugging Face text-to-text model, and exporting a lightweight checkpoint for inference.
 

@@ -103,6 +103,7 @@ with st.sidebar:
     if not hf_token_input and hf_token:
         st.caption("Using Hugging Face token from environment/Streamlit secrets")
     llm_qpp = st.slider("LLM questions per passage", min_value=1, max_value=3, value=1)
+    show_expanded_choices = st.checkbox("Show expanded choices under each question", value=False)
     # If LLM is enabled, allow choosing hosted vs local backend
     if use_llm:
         llm_backend_choice = st.selectbox(
@@ -208,6 +209,15 @@ if st.session_state.quiz_items:
                 key=f"choice_{index}",
                 label_visibility="collapsed",
             )
+            if show_expanded_choices:
+                # Render choices explicitly (A/B/C/D) so they're always visible
+                labels = ["A", "B", "C", "D", "E"]
+                choices_html = ""
+                for i, ch in enumerate(item.choices):
+                    prefix = labels[i] if i < len(labels) else str(i + 1)
+                    choices_html += f"<div style='margin:4px 0; padding:6px 8px; border-radius:6px; background:#fafafa; border:1px solid #efefef;'>" \
+                                    f"<strong>{prefix}.</strong>&nbsp; {ch}</div>"
+                st.markdown(choices_html, unsafe_allow_html=True)
 
         submitted = st.form_submit_button("Grade my quiz", use_container_width=True)
 
@@ -237,14 +247,25 @@ if st.session_state.quiz_items:
         for index, (item, selected, is_correct, is_answered) in enumerate(results):
             state_label = "✓ Correct" if is_correct else "✗ Incorrect"
             state_class = "correct" if is_correct else "incorrect"
+            # Build choices display with highlight for correct answer
+            choice_rows = ""
+            labels = ["A", "B", "C", "D", "E"]
+            for i, ch in enumerate(item.choices):
+                prefix = labels[i] if i < len(labels) else str(i + 1)
+                # highlight the correct answer
+                if ch == item.answer:
+                    choice_rows += f"<div style='margin:6px 0; padding:8px; border-radius:6px; background:#000; color:#fff;'><strong>{prefix}.</strong>&nbsp; {ch}</div>"
+                else:
+                    choice_rows += f"<div style='margin:6px 0; padding:8px; border-radius:6px; background:#fafafa; color:#111; border:1px solid #efefef;'><strong>{prefix}.</strong>&nbsp; {ch}</div>"
+
             st.markdown(
                 f"""
                 <div class="question-card">
                     <div class="question-title">Question {index + 1} - <span class="{state_class}">{state_label}</span></div>
                     <div class="question-meta">{item.question}</div>
-                    <div class="question-meta">Your answer: <strong>{selected if is_answered else 'Not answered'}</strong></div>
-                    <div class="question-meta">Correct answer: <strong>{item.answer}</strong></div>
-                    <div class="question-meta"><strong>Context:</strong> {item.context}</div>
+                    <div style="margin-top:8px;">{choice_rows}</div>
+                    <div style="margin-top:8px;">Your answer: <strong>{selected if is_answered else 'Not answered'}</strong></div>
+                    <div style="margin-top:8px; color:#666;">Context: {item.context}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
