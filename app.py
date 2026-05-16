@@ -88,11 +88,11 @@ html, body, [class*='css'] {
 
 .stApp {
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-    color: #FFFFFF;
+    color: #FFFFFF !important;
 }
 
 .stApp:hover {
-    color: #111827;
+    color: #111827 !important;
 }
 
 .block-container { padding-top: 1.25rem; padding-bottom: 1.6rem; max-width: 1320px; }
