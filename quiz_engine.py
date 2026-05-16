@@ -13,7 +13,7 @@ except Exception:
     _HAS_TRANSFORMERS = False
 
 # Default LLM model for optional generation mode
-DEFAULT_MODEL_NAME = "meta-llama/Meta-Llama-3-8B-Instruct"
+DEFAULT_MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
 
 
 @dataclass(frozen=True)

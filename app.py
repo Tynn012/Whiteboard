@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import streamlit as st
+import os
 
 from quiz_engine import load_clapnq_sample, quiz_to_json
 
@@ -95,8 +96,12 @@ with st.sidebar:
     randomize_questions = st.checkbox("Randomize question order", value=True)
     distractor_difficulty = st.slider("Distractor difficulty", min_value=0.0, max_value=1.0, value=0.7, step=0.1, help="Higher = harder distractors")
     use_llm = st.checkbox("Use LLM for question generation (heavy)", value=False)
-    model_name_input = st.text_input("LLM model name", value="meta-llama/Meta-Llama-3-8B-Instruct")
-    hf_token = st.text_input("Hugging Face token (optional)", type="password")
+    model_name_input = st.text_input("LLM model name", value="Qwen/Qwen2.5-7B-Instruct")
+    hf_token_input = st.text_input("Hugging Face token (optional)", type="password")
+    # HF token fallback order: explicit input -> Streamlit secrets -> environment variable HF_TOKEN
+    hf_token = hf_token_input or st.secrets.get("HF_TOKEN") or os.environ.get("HF_TOKEN")
+    if not hf_token_input and hf_token:
+        st.caption("Using Hugging Face token from environment/Streamlit secrets")
     llm_qpp = st.slider("LLM questions per passage", min_value=1, max_value=3, value=1)
 
 col_main, col_info = st.columns([1.12, 0.88], gap="large")

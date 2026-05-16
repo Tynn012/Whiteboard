@@ -192,3 +192,25 @@ streamlit run app.py
    - Walk through the `notebooks/kaggle_primeqa_board_exam_finetune_cells.md` with your friend to show real fine-tuning steps.
 
 If you want, I will finish this `How this app was built` section by adding small code snippets for the exact functions we edited (for example, the final `build_choices` implementation) and I can open a pull request with those snippets included as separate helper files.
+
+## Turnover checklist (readying for your friend)
+
+- **Code:** `app.py`, `quiz_engine.py`, `notebooks/*` are present and functional for dataset-only mode (SQuAD v2).
+- **Secrets:** The app reads `HF_TOKEN` from `Streamlit secrets` or the `HF_TOKEN` environment variable. Do not paste tokens into the app UI for long-term storage — use environment variables or `secrets.toml`.
+- **Run:** Install dependencies and run locally:
+
+```bash
+python -m pip install -r requirements.txt
+streamlit run app.py
+```
+
+- **Quick HF token setup (local):** create a file named `.env` with `HF_TOKEN=...` or set `HF_TOKEN` in your environment.
+- **Streamlit deploy:** add `HF_TOKEN` to your app's Secrets on share.streamlit.io or use GitHub Actions/Secrets in your repository.
+
+## Added packaging & CI
+
+- `.gitignore` added to ignore local environments and secrets.
+- `LICENSE` (MIT) added for handoff.
+- `.env.example` included to show expected env variables.
+- A lightweight GitHub Action workflow is included at `.github/workflows/ci.yml` that installs minimal deps and runs a smoke test.
+
