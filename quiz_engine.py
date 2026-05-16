@@ -9,7 +9,7 @@ from typing import Sequence
 import torch
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-DEFAULT_MODEL_NAME = "PrimeQA/mt5-base-tydi-question-generator"
+DEFAULT_MODEL_NAME = "meta-llama/Meta-Llama-3-8B-Instruct"
 SPECIAL_SEPARATOR = "<<sep>>"
 
 
@@ -317,7 +317,7 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQue
     try:
         from datasets import load_dataset
         
-        dataset = load_dataset("PrimeQA/clapnq", split=split, streaming=False)
+        dataset = load_dataset("squad_v2", split=split)
         quiz_items: list[QuizQuestion] = []
         seen_questions: set[str] = set()
         
@@ -325,15 +325,9 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQue
             try:
                 item = dataset[idx]
                 
-                # CLAPNQ schema: question, contexts (list), long_answer
+                # SQuAD v2 schema: question, context, answers (list with text and answer_start)
                 question = normalize_whitespace(str(item.get("question", "")))
-                
-                # Handle contexts as list
-                contexts = item.get("contexts", [])
-                if isinstance(contexts, list) and contexts:
-                    context = normalize_whitespace(str(contexts[0]))
-                else:
-                    context = normalize_whitespace(str(contexts)) if contexts else ""
+                context = normalize_whitespace(str(item.get("context", "")))
                 
                 if not question or not context:
                     continue
@@ -343,11 +337,14 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQue
                     continue
                 seen_questions.add(fingerprint)
                 
-                # Use long_answer as the source answer
-                long_answer = item.get("long_answer", "")
-                answer = normalize_whitespace(str(long_answer)) if long_answer else ""
+                # Extract answer from answers list
+                answers = item.get("answers", {})
+                answer = ""
+                answer_texts = answers.get("text", []) if isinstance(answers, dict) else []
+                if isinstance(answer_texts, list) and len(answer_texts) > 0:
+                    answer = normalize_whitespace(str(answer_texts[0]))
                 
-                # Fallback: sample from context if no long_answer
+                # Fallback: sample from context if no answer
                 if not answer:
                     sampled = _sample_answers(context, 1)
                     answer = sampled[0] if sampled else "Cannot determine"
@@ -376,4 +373,4 @@ def load_clapnq_sample(split: str = "train", max_items: int = 6) -> list[QuizQue
         return quiz_items
         
     except Exception as exc:
-        raise RuntimeError(f"Failed to load CLAPNQ dataset: {exc}")
+        raise RuntimeError(f"Failed to load SQuAD v2 dataset: {exc}")
