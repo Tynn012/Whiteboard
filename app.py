@@ -4,7 +4,70 @@ import json
 
 import streamlit as st
 
-from quiz_engine import load_clapnq_sample, load_mmlu_sample, quiz_to_json
+from quiz_engine import load_mmlu_sample, quiz_to_json
+
+# Known CAIS MMLU configs (keeps the UI friendly and avoids an extra Hub query)
+MMLU_CONFIGS = [
+    "abstract_algebra",
+    "all",
+    "anatomy",
+    "astronomy",
+    "auxiliary_train",
+    "business_ethics",
+    "clinical_knowledge",
+    "college_biology",
+    "college_chemistry",
+    "college_computer_science",
+    "college_mathematics",
+    "college_medicine",
+    "college_physics",
+    "computer_security",
+    "conceptual_physics",
+    "econometrics",
+    "electrical_engineering",
+    "elementary_mathematics",
+    "formal_logic",
+    "global_facts",
+    "high_school_biology",
+    "high_school_chemistry",
+    "high_school_computer_science",
+    "high_school_european_history",
+    "high_school_geography",
+    "high_school_government_and_politics",
+    "high_school_macroeconomics",
+    "high_school_mathematics",
+    "high_school_microeconomics",
+    "high_school_physics",
+    "high_school_psychology",
+    "high_school_statistics",
+    "high_school_us_history",
+    "high_school_world_history",
+    "human_aging",
+    "human_sexuality",
+    "international_law",
+    "jurisprudence",
+    "logical_fallacies",
+    "machine_learning",
+    "management",
+    "marketing",
+    "medical_genetics",
+    "miscellaneous",
+    "moral_disputes",
+    "moral_scenarios",
+    "nutrition",
+    "philosophy",
+    "prehistory",
+    "professional_accounting",
+    "professional_law",
+    "professional_medicine",
+    "professional_psychology",
+    "public_relations",
+    "security_studies",
+    "sociology",
+    "us_foreign_policy",
+    "virology",
+    "world_religions",
+]
 
 
 st.set_page_config(
@@ -105,7 +168,11 @@ with st.sidebar:
     st.markdown("## Quiz settings")
     num_questions = st.slider("Number of questions", min_value=1, max_value=50, value=6)
     quiz_split = st.selectbox("Dataset split", options=["validation", "train"], index=0)
-    mmlu_config = st.text_input("MMLU config", value="all", help="Dataset config name (e.g., 'all' or 'machine_learning')")
+    mmlu_config_select = st.selectbox("MMLU subset", options=MMLU_CONFIGS + ["Other (type...)"] , index=MMLU_CONFIGS.index("all"))
+    if mmlu_config_select == "Other (type...)":
+        mmlu_config = st.text_input("MMLU config (custom)", value="all", help="Type a config name from the dataset list")
+    else:
+        mmlu_config = mmlu_config_select
     category_filter = st.text_input("Filter by category (optional)", placeholder="e.g., history, science, geography...")
     randomize_questions = st.checkbox("Randomize question order", value=True)
     show_expanded_choices = st.checkbox("Show expanded choices under each question", value=False)
