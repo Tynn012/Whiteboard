@@ -81,49 +81,70 @@ st.markdown(
     """
 <style>
 html, body, [class*='css'] {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-    background: #ffffff;
-    color: #000000;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #f5f7fb;
+    color: #111827;
 }
 
 .stApp {
-    background: #ffffff;
-    color: #000000;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    color: #111827;
 }
 
-.block-container { padding-top: 1.2rem; padding-bottom: 1.2rem; }
+.block-container { padding-top: 1.25rem; padding-bottom: 1.6rem; max-width: 1320px; }
 
-.hero { padding: 1rem; background: transparent; border-bottom: 1px solid #e6e6e6; margin-bottom: 1rem; }
-.hero h1 { font-size: 1.6rem; margin: 0; font-weight: 700; }
-.hero p { margin: 4px 0 0 0; color: #222; font-size: 0.95rem; }
+.hero { padding: 1.2rem 1.25rem; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 18px; margin-bottom: 1rem; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); }
+.hero h1 { font-size: 1.9rem; margin: 0; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+.hero p { margin: 6px 0 0 0; color: #334155; font-size: 0.98rem; line-height: 1.5; }
 
-.badge-row { display:flex; gap:0.4rem; margin-top:0.6rem; }
-.badge { font-size:0.8rem; color:#111; background:#f4f4f4; padding:0.25rem 0.6rem; border-radius:999px; }
+.badge-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.85rem; }
+.badge { font-size:0.8rem; color:#0f172a; background:#eef2ff; border:1px solid #c7d2fe; padding:0.35rem 0.7rem; border-radius:999px; font-weight:700; }
 
-.panel { background: transparent; border: 1px solid #efefef; border-radius:8px; padding:0.8rem; margin-bottom:1rem; }
-.panel h3 { margin:0; font-size:1.05rem; font-weight:700; }
+.panel { background: #ffffff; border: 1px solid #e5e7eb; border-radius:16px; padding:1rem; margin-bottom:1rem; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
+.panel h3 { margin:0; font-size:1.05rem; font-weight:800; color:#0f172a; }
 
-.question-card { padding:0.85rem; border-radius:8px; background:#fff; border:1px solid #f0f0f0; margin-bottom:0.9rem; }
-.question-title { font-weight:700; margin-bottom:0.25rem; }
-.question-meta { color:#111; font-size:0.95rem; }
-.small-note { color:#444; font-size:0.92rem; }
+.question-card { padding:1rem 1.05rem; border-radius:16px; background:#ffffff; border:1px solid #dbe2ea; margin-bottom:1rem; box-shadow: 0 8px 20px rgba(2, 6, 23, 0.04); }
+.question-topline { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:0.75rem; }
+.question-title { font-weight:800; margin:0; font-size:1rem; color:#0f172a; }
+.question-badge { display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.65rem; border-radius:999px; background:#111827; color:#fff; font-size:0.8rem; font-weight:700; letter-spacing:0.02em; }
+.question-meta { color:#111827; font-size:1rem; line-height:1.55; font-weight:600; }
+.question-subtext { color:#475569; font-size:0.92rem; margin-top:0.35rem; }
+.small-note { color:#334155; font-size:0.94rem; line-height:1.6; }
 
 /* New: card-style choices */
-.choice-card { margin:8px 0; padding:10px 12px; border-radius:8px; background:#fbfbfb; border:1px solid #e9e9e9; display:flex; align-items:flex-start; gap:10px; }
-.choice-label { min-width:34px; height:34px; border-radius:6px; background:#111; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
-.choice-text { color:#111; flex:1; }
-.choice-selected { border:2px solid #007a3d; }
+.choice-card { margin:10px 0; padding:12px 12px; border-radius:14px; background:#ffffff; border:1px solid #dbe2ea; display:flex; align-items:flex-start; gap:12px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); }
+.choice-label { min-width:42px; height:42px; border-radius:12px; background:#0f172a; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:0.95rem; box-shadow: inset 0 -1px 0 rgba(255,255,255,0.08); }
+.choice-text { color:#0f172a; flex:1; font-size:0.98rem; line-height:1.5; font-weight:600; }
+.choice-selected { border:2px solid #16a34a; }
 
-.correct { color: #007a3d; font-weight:700; }
-.incorrect { color: #b42318; font-weight:700; }
+.correct { color: #15803d; font-weight:800; }
+.incorrect { color: #b42318; font-weight:800; }
+.muted-pill { display:inline-flex; align-items:center; padding:0.22rem 0.55rem; border-radius:999px; font-size:0.78rem; font-weight:700; background:#eef2f7; color:#334155; border:1px solid #d7dee8; }
+.answer-state { margin-top:0.9rem; font-size:0.92rem; color:#334155; }
 
 /* Reduce visual clutter on widgets */
-.stButton>button, .stSelectbox>div, .stTextInput>div { border-radius:6px; }
+.stButton>button, .stSelectbox>div, .stTextInput>div { border-radius:10px; }
 /* Make primary buttons black with white text for high contrast */
-.stButton>button { background:#000000; color:#ffffff; border:none; }
-.stRadio>div[role="radiogroup"] > label > div { padding: 0.45rem 0.6rem; border-radius:6px; }
+.stButton>button { background:#111827; color:#ffffff; border:1px solid #111827; font-weight:700; box-shadow: 0 6px 16px rgba(17, 24, 39, 0.18); }
+.stButton>button:hover { background:#0b1220; border-color:#0b1220; }
+.stSelectbox>div, .stTextInput>div { background:#ffffff; border:1px solid #cbd5e1; }
+.stRadio>div[role="radiogroup"] > label > div { padding: 0.7rem 0.8rem; border-radius:12px; background:#fff; border:1px solid #dbe2ea; margin-bottom:0.5rem; font-weight:600; color:#111827 !important; }
 /* Ensure native radio inputs are visible across themes */
-.stRadio input[type="radio"] { display:inline-block !important; opacity:1 !important; width:18px; height:18px; margin-right:8px; vertical-align:middle; }
+.stRadio input[type="radio"] { display:inline-block !important; opacity:1 !important; width:20px; height:20px; margin-right:10px; vertical-align:middle; accent-color:#111827; }
+
+/* Streamlit form labels and markdown readability */
+.stMarkdown, .stText, .stSelectbox, .stRadio, .stSlider, .stCheckbox { color:#111827 !important; }
+
+/* Result area */
+.result-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:0.75rem; margin:0.75rem 0 1rem 0; }
+.result-tile { background:#fff; border:1px solid #dbe2ea; border-radius:16px; padding:0.85rem 1rem; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04); }
+.result-tile .label { font-size:0.8rem; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+.result-tile .value { font-size:1.45rem; color:#0f172a; font-weight:800; margin-top:0.15rem; }
+
+@media (max-width: 900px) {
+    .result-grid { grid-template-columns: 1fr; }
+    .question-topline { flex-direction:column; align-items:flex-start; }
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -152,10 +173,10 @@ st.markdown(
         Load multiple-choice questions from the CAIS MMLU dataset (pre-built 4-choice MCQs) for review and practice.
     </p>
     <div class="badge-row">
-        <span class="badge">SQuAD v2 Dataset</span>
         <span class="badge">CAIS MMLU Dataset</span>
-        <span class="badge">Randomized questions</span>
-        <span class="badge">Category filtering</span>
+        <span class="badge">Validation split</span>
+        <span class="badge">4-choice questions</span>
+        <span class="badge">High-contrast UI</span>
     </div>
 </div>
 """,
@@ -187,6 +208,7 @@ col_main, col_info = st.columns([1.12, 0.88], gap="large")
 
 with col_main:
     st.markdown('<div class="panel"><h3>Load Quiz</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-note">Pick a subject subset, then load a quiz. The app uses the validation split automatically so the interface stays simple.</div>', unsafe_allow_html=True)
     
     load_col_1, load_col_2 = st.columns([0.55, 0.45])
     with load_col_1:
@@ -243,11 +265,10 @@ with col_info:
     st.markdown(
         """
         <div class="small-note">
-        1. <strong>Configure settings:</strong> Adjust number of questions and choose an `MMLU config` (e.g., 'all' or a subject).
-        2. <strong>Note:</strong> This app loads the held-out `validation` split by default for safe practice.
-        3. <strong>Load questions:</strong> Click "Load MMLU questions (4-choice)" to fetch pre-built multiple-choice items.
-        4. <strong>Answer:</strong> Select from multiple-choice options.
-        5. <strong>Grade:</strong> Click "Grade my quiz" to see your score and review with explanations.
+        1. <strong>Choose a subject:</strong> Select an `MMLU config` such as `all` or `machine_learning`.
+        2. <strong>Load quiz:</strong> Click "Load MMLU questions (4-choice)" to fetch pre-built multiple-choice items.
+        3. <strong>Answer clearly:</strong> Each choice is displayed as a bordered card with a visible A/B/C/D label.
+        4. <strong>Review results:</strong> The grading view highlights the correct answer and your selection.
         </div>
         """,
         unsafe_allow_html=True,
@@ -255,29 +276,38 @@ with col_info:
 
 if st.session_state.quiz_items:
     st.markdown('<div class="panel"><h3>Your quiz</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-note">Each question is shown in a dedicated card. Use the radio button row below each question to select one answer.</div>', unsafe_allow_html=True)
 
     with st.form("quiz_form"):
         for index, item in enumerate(st.session_state.quiz_items):
+            labels = ["A", "B", "C", "D", "E"]
+            question_tag = f"Question {index + 1}"
+
             st.markdown(
                 f"""
                 <div class="question-card">
-                    <div class="question-title">Question {index + 1}</div>
+                    <div class="question-topline">
+                        <span class="question-badge">{question_tag}</span>
+                        <span class="muted-pill">MMLU • 4 choices</span>
+                    </div>
                     <div class="question-meta">{item.question}</div>
+                    <div class="question-subtext">Read the prompt carefully, then choose the best answer below.</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
-            # show choices as radio buttons with A/B prefixes for clarity
-            labels = ["A", "B", "C", "D", "E"]
+
             display_options = [f"{labels[i]}. {ch}" for i, ch in enumerate(item.choices)]
             st.radio(
-                f"Answer for question {index + 1}",
+                "Select an answer",
                 options=["Select an answer"] + display_options,
                 key=f"choice_{index}",
-                label_visibility="collapsed",
+                label_visibility="visible",
+                horizontal=False,
+                index=0,
             )
+
             if show_expanded_choices:
-                # Render choices explicitly (A/B/C/D) so they're always visible
                 choices_html = ""
                 for i, ch in enumerate(item.choices):
                     prefix = labels[i] if i < len(labels) else str(i + 1)
@@ -312,10 +342,16 @@ if st.session_state.quiz_items:
             st.session_state.score = correct
             st.session_state.total = len(st.session_state.quiz_items)
 
-            score_col_1, score_col_2, score_col_3 = st.columns(3)
-            score_col_1.metric("Correct", correct)
-            score_col_2.metric("Answered", answered)
-            score_col_3.metric("Score", f"{correct}/{len(st.session_state.quiz_items)}")
+            st.markdown(
+                f"""
+                <div class="result-grid">
+                    <div class="result-tile"><div class="label">Correct</div><div class="value">{correct}</div></div>
+                    <div class="result-tile"><div class="label">Answered</div><div class="value">{answered}</div></div>
+                    <div class="result-tile"><div class="label">Score</div><div class="value">{correct}/{len(st.session_state.quiz_items)}</div></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             for index, (item, selected, is_correct, is_answered) in enumerate(results):
                 state_label = "✓ Correct" if is_correct else "✗ Incorrect"
@@ -328,21 +364,24 @@ if st.session_state.quiz_items:
                     # highlight the correct answer and indicate the user's selection
                     if ch == item.answer:
                         # correct answer
-                        choice_rows += f"<div class='choice-card' style='background:#000;color:#fff;'><div class='choice-label'>{prefix}</div><div class='choice-text'>{ch}</div></div>"
+                        choice_rows += f"<div class='choice-card' style='background:#0f172a;color:#fff;border-color:#0f172a;'><div class='choice-label' style='background:#fff;color:#0f172a;'>{prefix}</div><div class='choice-text' style='color:#fff;'>{ch}</div></div>"
                     elif ch == selected:
                         # user's (incorrect) selection
-                        choice_rows += f"<div class='choice-card' style='border:2px solid #b42318;background:#fff0f0;'><div class='choice-label' style='background:#b42318;'>?</div><div class='choice-text'>{ch}</div></div>"
+                        choice_rows += f"<div class='choice-card' style='border:2px solid #b42318;background:#fff7f7;'><div class='choice-label' style='background:#b42318;'>?</div><div class='choice-text'>{ch}</div></div>"
                     else:
-                        choice_rows += f"<div class='choice-card'><div class='choice-label' style='background:#777;'> </div><div class='choice-text'>{ch}</div></div>"
+                        choice_rows += f"<div class='choice-card'><div class='choice-label' style='background:#64748b;'>{prefix}</div><div class='choice-text'>{ch}</div></div>"
 
                 st.markdown(
                     f"""
                     <div class="question-card">
-                        <div class="question-title">Question {index + 1} - <span class="{state_class}">{state_label}</span></div>
+                        <div class="question-topline">
+                            <span class="question-badge">Question {index + 1}</span>
+                            <span class="{state_class}">{state_label}</span>
+                        </div>
                         <div class="question-meta">{item.question}</div>
                         <div style="margin-top:8px;">{choice_rows}</div>
-                        <div style="margin-top:8px;">Your answer: <strong>{selected if is_answered else 'Not answered'}</strong></div>
-                        <div style="margin-top:8px; color:#666;">Context: {item.context}</div>
+                        <div class="answer-state">Your answer: <strong>{selected if is_answered else 'Not answered'}</strong></div>
+                        <div class="question-subtext" style="margin-top:0.45rem;">Context: {item.context}</div>
                     </div>
                     """,
                     unsafe_allow_html=True,
