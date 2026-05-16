@@ -113,7 +113,7 @@ html, body, [class*='css'] {
 
 /* New: card-style choices */
 .choice-card { margin:10px 0; padding:12px 12px; border-radius:14px; background:#ffffff; border:1px solid #dbe2ea; display:flex; align-items:flex-start; gap:12px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); }
-.choice-label { min-width:42px; height:42px; border-radius:12px; background:#0f172a; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:0.95rem; box-shadow: inset 0 -1px 0 rgba(255,255,255,0.08); }
+.choice-label { min-width:42px; height:42px; border-radius:12px; background:#0f172a; color:#000000; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:0.95rem; box-shadow: inset 0 -1px 0 rgba(255,255,255,0.08); }
 .choice-text { color:#FFFFFF !important; flex:1; font-size:0.98rem; line-height:1.5; font-weight:600; }
 .choice-selected { border:2px solid #16a34a; }
 
