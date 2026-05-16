@@ -395,8 +395,12 @@ if st.session_state.quiz_items:
                     prefix = labels[i] if i < len(labels) else str(i + 1)
                     # highlight the correct answer and indicate the user's selection
                     if ch == item.answer:
-                        # correct answer
-                        choice_rows += f"<div class='choice-card' style='background:#0f172a;color:#fff;border-color:#0f172a;'><div class='choice-label' style='background:#fff;color:#0f172a;'>{prefix}</div><div class='choice-text' style='color:#fff;'>{ch}</div></div>"
+                        # correct answer — use a green accent card (not pure black) for readability
+                        choice_rows += (
+                            f"<div class='choice-card' style='background:linear-gradient(90deg,#16a34a,#15803d);color:#fff;border-color:#15803d;'>"
+                            f"<div class='choice-label' style='background:transparent;color:#fff;border-radius:10px;border:1px solid rgba(255,255,255,0.08);'>{prefix}</div>"
+                            f"<div class='choice-text' style='color:#fff;font-weight:800;'>{ch}</div></div>"
+                        )
                     elif ch == selected:
                         # user's (incorrect) selection
                         choice_rows += f"<div class='choice-card' style='border:2px solid #b42318;background:#fff7f7;'><div class='choice-label' style='background:#b42318;'>?</div><div class='choice-text'>{ch}</div></div>"
