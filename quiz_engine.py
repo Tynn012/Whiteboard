@@ -5,12 +5,10 @@ import re
 from dataclasses import dataclass
 from typing import Sequence
 
-try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    import torch
-    _HAS_TRANSFORMERS = True
-except Exception:
-    _HAS_TRANSFORMERS = False
+import importlib.util
+
+# Detect presence of heavy ML libraries without importing them (avoid side-effects)
+_HAS_TRANSFORMERS = importlib.util.find_spec("transformers") is not None and importlib.util.find_spec("torch") is not None
 
 # Default LLM model for optional generation mode
 DEFAULT_MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
@@ -159,6 +157,13 @@ class ModelBackend:
         self._load_backend()
 
     def _load_backend(self):
+        # perform local imports to avoid importing transformers at module import time
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            import torch
+        except Exception as exc:
+            raise RuntimeError("Failed to import transformers/torch for LLM backend") from exc
+
         kwargs = {}
         if self.hf_token:
             kwargs['use_auth_token'] = self.hf_token
