@@ -91,6 +91,10 @@ html, body, [class*='css'] {
     color: #111827;
 }
 
+div.stForm button[kind="formSubmit"] {
+    color: white !important;
+}
+
 .block-container { padding-top: 1.25rem; padding-bottom: 1.6rem; max-width: 1320px; }
 
 .hero { padding: 1.2rem 1.25rem; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 18px; margin-bottom: 1rem; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); }
@@ -191,7 +195,7 @@ st.markdown(
         user-select: none;
     }
     /* Make expanded choice blocks explicit and readable */
-    .question-card div[style] { color: #111 !important; }
+    .question-card div[style] { color: #FFFFFF !important; }
     </style>
     """,
     unsafe_allow_html=True,
